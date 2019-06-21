@@ -1,0 +1,16 @@
+{
+  "normalize": [
+    "True",
+    {
+      "global_max": 10000,
+      "global_min": -10000,
+      "target_max": 1,
+      "target_min": 0
+    }
+  ],
+  "directory": {
+    "mutliple_patients": "D:/Desktop@D/Attention-Gated-Networks/data/TCIA_pancreas_in_DICOM_format/PANCREAS-CT-82",
+    "save_folder": "D:/Desktop@D/dicom_conv/output_dir",
+    "suffix_check": "PANCREAS"
+  }
+}

@@ -1,0 +1,11 @@
+
+# [normalize][0]
+if set to True, then the 2D slices are stacked into a volume normalized using the following arguments
+# [normalize] [1]
+global_max and global_min are user-specified max and min values threshold of the 3D volume across all patients. target_max and target_min are the final resized max and min values
+# [directory][mutliple_patients]
+Directory containing all patients folders PANCREAS0001, PANCREAS0002 etc
+# [directory][save_folder]
+The directory to save the output of the process.
+# [directory][suffix_check]
+Make sure the only patient file whose folder starts with this suffix is included as the valid patient file.
