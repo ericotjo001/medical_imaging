@@ -362,7 +362,7 @@ def generate_config(config_dir):
 			}	
 		],
 		'directory' : {
-			'mutliple_patients': "D:/Desktop@D/Attention-Gated-Networks/data/TCIA_pancreas_in_DICOM_format/PANCREAS-CT-82",
+			'multiple_patients': "D:/Desktop@D/Attention-Gated-Networks/data/TCIA_pancreas_in_DICOM_format/PANCREAS-CT-82",
 			'save_folder': "D:/Desktop@D/dicom_conv/output_dir",
 			'suffix_check': "PANCREAS"
 		}
