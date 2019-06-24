@@ -15,6 +15,10 @@ def main():
 	if arg_dict['mode'] == 'generate_config':
 		generate_config(arg_dict['dir'])
 		return
+	if arg_dict['mode'] == 'mass_observe_labels':
+		all_patients_folder_dir = arg_dict['dir']
+		mass_observe_labels(all_patients_folder_dir)
+		return
 	this_dir = os.getcwd()
 	temp = listdir(arg_dict['dir'])[0]
 	temp1 = listdir(os.path.join(arg_dict['dir'], temp))[0]
@@ -40,6 +44,7 @@ def main():
 	if arg_dict['mode'] == 'mass_observe':
 		all_patients_folder_dir = arg_dict['dir']
 		mass_observe(all_patients_folder_dir, print_info=100)
+	
 
 	
 if __name__=='__main__':

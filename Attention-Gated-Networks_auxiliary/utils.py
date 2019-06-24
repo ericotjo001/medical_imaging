@@ -143,6 +143,14 @@ Some other modes to observe PANCREAS CT-82 data
         --dir: directory to put the config file.
         For example:
         python ctpan.py --mode generate_config --dir D:/Desktop@D/dicom_conv
+
+    (9) mass_observe_labels
+        Observe labels of segmentation files.
+        Requires
+         --dir: directory to the file of all patients. If the directory is data, then we have
+            the patients' files stored as data/PANCREAS0001, data/PANCREAS0002 etc 
+        For example:
+        python ctpan.py --mode mass_observe_labels --dir D:\Desktop@D\Attention-Gated-Networks\data\TCIA_pancreas_labels-02-05-2017
 '''
 
 CONFIG_ARG_EXPLANATIONS = ["\n# [normalize][0]\nif set to True, then the 2D slices are stacked into a volume normalized using the following arguments\n# [normalize][1]\n",
