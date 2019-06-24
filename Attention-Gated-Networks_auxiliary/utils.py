@@ -1,6 +1,7 @@
 import numpy as np
 import json, os, pydicom, copy
 from os import listdir
+import nibabel as nib
 
 def normalize_numpy_array(x,minx=-1,maxx=1, minx0=None, maxx0=None):
     """
@@ -58,7 +59,7 @@ and likewise for other slices 000001.dcm, 000002.dcm etc
     stack_all
       If the downloaded data PANCREAS_0001, PANCREAS_0002 etc are stored in config: [directory][multiple_patients],
       then this function will combine the slices in each PANCREAS_XXXX/somefolder/somefolder/YYYYYY.dcm into 3D volume
-      in .dcm format. 
+      in .nii format with dummy affine value. 
     Requires
     --config_dir: full path to the configuration file, typically called config.json
     Relevant configurations: 
@@ -107,7 +108,7 @@ Some other modes to observe PANCREAS CT-82 data
         python ctpan.py --mode z_position --dir D:/Desktop@D/dicom_conv/PANCREAS_0001
 
     (5) stack_one
-        For one patient, stack the 2D slices into a 3D volume.
+        For one patient, stack the 2D slices into a 3D volume in .nii format with dummy affine value.
         return cube, this_min, this_max 
             where this_min and this_max are respectively the min and max values of the cube
         Requires

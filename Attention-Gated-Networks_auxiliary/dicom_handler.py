@@ -102,6 +102,7 @@ def stack_one(one_patient_folder_dir, save_folder=None, save_name=None,
 	  one_patient_folder_dir is the path/to/PANCREAS_0001
 	
 	"""
+
 	z_pos = []
 	slice_list = listdir(one_patient_folder_dir)
 	slice_shape = None
@@ -138,7 +139,7 @@ def stack_one(one_patient_folder_dir, save_folder=None, save_name=None,
 		data_path = os.path.join(one_patient_folder_dir, slice_list[0])
 		ds = pydicom.dcmread(data_path)
 		ds0 = copy.copy(ds)
-		ds0.PixelData = cube.tobytes()
+		# ds0.PixelData = cube.tobytes() #deprecated
 		if not os.path.exists(save_folder):
 			os.mkdir(save_folder)
 		if print_info > 19:
@@ -146,7 +147,12 @@ def stack_one(one_patient_folder_dir, save_folder=None, save_name=None,
 			print("  np.min(cube) = %f, np.max(cube) = %f"%(this_min, this_max))
 			print("  stack_one(). save_folder:",save_folder, end='')
 			print("  save_name  :", save_name)
-		ds0.save_as(os.path.join(save_folder, save_name + '.dcm'))
+		# ds0.save_as(os.path.join(save_folder, save_name + '.dcm')) #deprecated
+		print("         (!) stack_one(). Dummy affine value is used. ")
+		affine = np.diag([1, 2, 3, 1])
+		array_img = nib.Nifti1Image(cube, affine)
+		nib.save(array_img, os.path.join(save_folder, save_name + '.nii'))
+
 	else:
 		this_min, this_max = np.min(cube),np.max(cube)
 		if print_info > 19: print("  np.min(cube) = %f, np.max(cube) = %f"%(this_min, this_max))
