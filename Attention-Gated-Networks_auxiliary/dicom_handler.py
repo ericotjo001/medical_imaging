@@ -21,22 +21,22 @@ def stack_all(config_dir):
 
 def mass_observe_labels(all_patients_folder_dir, print_info=100):
 	if print_info > 99: print("  %-16s | %-16s "%("patient ID", "np.shape"))
-		"""
-		Example output:
-		patient ID       | np.shape
-		label0001.nii.gz | (512, 512, 240)
-		label0002.nii.gz | (512, 512, 195)
-		label0003.nii.gz | (512, 512, 216)
-		label0004.nii.gz | (512, 512, 221)
-		label0005.nii.gz | (512, 512, 210)
-		label0006.nii.gz | (512, 512, 223)
-		label0007.nii.gz | (512, 512, 201)
-		label0008.nii.gz | (512, 512, 205)
-		label0009.nii.gz | (512, 512, 196)
-		...
-		label0081.nii.gz | (512, 512, 209)
-		label0082.nii.gz | (512, 512, 226)
-		"""
+	"""
+	Example output:
+	patient ID       | np.shape
+	label0001.nii.gz | (512, 512, 240)
+	label0002.nii.gz | (512, 512, 195)
+	label0003.nii.gz | (512, 512, 216)
+	label0004.nii.gz | (512, 512, 221)
+	label0005.nii.gz | (512, 512, 210)
+	label0006.nii.gz | (512, 512, 223)
+	label0007.nii.gz | (512, 512, 201)
+	label0008.nii.gz | (512, 512, 205)
+	label0009.nii.gz | (512, 512, 196)
+	...
+	label0081.nii.gz | (512, 512, 209)
+	label0082.nii.gz | (512, 512, 226)
+	"""
 	try:
 		import nibabel as nib
 	except:
