@@ -151,7 +151,7 @@ def stack_one(one_patient_folder_dir, save_folder=None, save_name=None,
 		print("         (!) stack_one(). Dummy affine value is used. ")
 		affine = np.diag([1, 2, 3, 1])
 		array_img = nib.Nifti1Image(cube, affine)
-		nib.save(array_img, os.path.join(save_folder, save_name + '.nii'))
+		nib.save(array_img, os.path.join(save_folder, save_name + '.nii.gz'))
 
 	else:
 		this_min, this_max = np.min(cube),np.max(cube)
