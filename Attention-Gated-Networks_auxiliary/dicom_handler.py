@@ -146,7 +146,7 @@ def stack_one(one_patient_folder_dir, save_folder=None, save_name=None,
 			print("  np.min(cube) = %f, np.max(cube) = %f"%(this_min, this_max))
 			print("  stack_one(). save_folder:",save_folder, end='')
 			print("  save_name  :", save_name)
-		ds0.save_as(os.path.join(save_folder, save_name))
+		ds0.save_as(os.path.join(save_folder, save_name + '.dcm'))
 	else:
 		this_min, this_max = np.min(cube),np.max(cube)
 		if print_info > 19: print("  np.min(cube) = %f, np.max(cube) = %f"%(this_min, this_max))
