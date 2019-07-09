@@ -10,9 +10,23 @@ The .dcm files store 2D slices. This code combines (and normalize) the slices of
 into 3D volume. Each patient is coded as PANCREAS_0001, PANCREAS_0002 etc.
 
 ### Usage
-You can run the following in the command line.   
+You can run the following in the command line:   
 `python ctpan.py -h`
 
 Dependencies: read the utils.py or Attention-Gated-Networks_auxiliary/README.txt
 
+Note that tests are conducted in Windows 10, python 3.6. 
+
+## Multiv
+While working on medical images, for example in NIFTI formats, we might face memory problem. This is because a NIFTI volume might come in large sizes, for example 192x192x19. With large convolutional neural network, feeding the entire volume may result in out of memory error (at least my measly 4GB RAM does. Multi-view sampling is the way out of this. Using multi-view sampling, slices of the images (green rectangles) are sampled. The "multi" part of the multi-view can take the form of larger slice (red rectangles).
+
+![dualView2Dimage](https://drive.google.com/drive/u/1/folders/1c9b7V3EoNZ07p6IjpP8xAAaHue6DKq7s)
+
+### Usage
+Run the following in the comand line to run the tests: 
+'python multiv.py'
+
+See the implementations of the sampler class objects from multivtests.py or from the jupyter notebook tutorials.
+
+Dependencies: read the imports in multivutils.py
 Note that tests are conducted in Windows 10, python 3.6. 
