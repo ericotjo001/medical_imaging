@@ -56,8 +56,7 @@ class Sampler2D(Sampler):
 			if ylower == 0: check[2] = 1
 			if yupper == self.full_shape[1] - 1: check[3] = 1
 		check_result = np.all(check == [1, 1, 1, 1])
-		return check_result
-			
+		return check_result		
 
 class Sampler3D(Sampler):
 	"""Sampler3D"""
@@ -145,7 +144,6 @@ class Slice2D(SliceMaker):
 				j = j + y_inter
 			i, j = i + x_inter, 0
 		return
-
 
 class Slice3D(SliceMaker):
 	def set_slice_shape(self, slice_shape):

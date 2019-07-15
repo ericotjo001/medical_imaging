@@ -35,6 +35,11 @@ def main():
 			dualview2D_test(config_dir=args.dir)
 		if arg_dict['submode'] == 'dualview3D_test':
 			dualview3D_test(config_dir=args.dir)
+		if arg_dict['submode'] == 'dualuniform2D_test':
+			dualuniform2D_test(config_dir=args.dir, verbose=10)
+		if arg_dict['submode'] == 'dualuniform3D_test':
+			dualuniform3D_test(config_dir=args.dir, verbose=10)
+
 			
 if __name__=='__main__':
 	parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,

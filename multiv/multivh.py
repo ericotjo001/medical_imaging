@@ -18,18 +18,21 @@ class SliceMaker(object):
 		print('self.full_shape  : %s'%(str(self.full_shape)))
 		print('self.slice_shape : %s'%(str(self.slice_shape)))
 
-	def reconstruct_uniform_slices_no_padding(self, reconstruction_mapping):
+	def reconstruct_uniform_slices_no_padding(self, reconstruction_mapping, shape=None):
 		'''
 		params:
 		  reconstruction_mapping. List [x1,...,xN] where xk = (slice_k, img_slice_k)
 		  where slice_k is the 3D slice object, img_slice_k 3D numpy array slice of the 
 		  original ND image
+		  shape. The shape of the reconstructed image.
 		'''
-
-		reconstructed = np.zeros(shape=self.full_shape)
+		if shape is None: shape=self.full_shape
+		reconstructed = np.zeros(shape=shape)
 		for x in reconstruction_mapping:
 			reconstructed[x[0]] = x[1]	
-		return reconstructed	
+		return reconstructed
+
+		
 
 class Sampler(object):
 	"""Sampler abstract class"""
@@ -40,8 +43,6 @@ class Sampler(object):
 
 	def get_center(self): pass
 		
-
-
 def generate_config(this_dir=None):
 	print("Generating configuration file...")
 	CONFIG_FILE = {
@@ -77,6 +78,18 @@ def generate_config(this_dir=None):
 				'shell_shape': "[[1,1];[2,1];[2,2]]",
 				'n_sample'   : "10",
 				'save_static_figures': "1",
+				'save_gif'			 : "1"},
+			'dualuniform2D_test':{
+				'np.shape'   : "[6, 8]",
+				'slice_shape': "[2, 3]",
+				'shell_extension': "[[2,3];[1,0]]",
+				'save_static_figures': "1",
+				'save_gif'			 : "1"},
+			'dualuniform3D_test':{
+				'np.shape'   : "[6, 8, 5]",
+				'slice_shape': "[2, 3, 3]",
+				'shell_extension': "[[1,1];[1,1];[1,1]]",
+				'save_static_figures': "1",
 				'save_gif'			 : "1"}
 			}
 	}
@@ -87,7 +100,6 @@ def generate_config(this_dir=None):
 		json.dump(CONFIG_FILE, json_file, separators=(',', ': '), indent=2)
 	print("Config file generated: ", this_dir)
 	return
-
 
 class ConfigParser(object):
 	"""ConfigParser"""
@@ -114,7 +126,10 @@ class ConfigParser(object):
 				return data_dict
 			elif self.keys[1] == 'dualview2D_test' or self.keys[1] == 'dualview3D_test':
 				data_dict = self.get00004(with_shell=True, verbose=verbose)
-				return data_dict		
+				return data_dict
+			elif self.keys[1] == 'dualuniform2D_test' or self.keys[1] == 'dualuniform3D_test':
+				data_dict = self.get00005()
+				return data_dict	
 		else:
 			raise Exception("ConfigParser. Error at get_config_data()")
 		return
@@ -173,3 +188,20 @@ class ConfigParser(object):
 			for this_key in data_dict: print("  ", this_key, ":" , data_dict[this_key])
 		return data_dict
 
+	def get00005(self, verbose=10):
+		data_dict = {}
+		shapeND = self.config_raw_data[self.keys[0]][self.keys[1]]['np.shape']
+		shapeND = sanitize_json_strings(shapeND, mode='one_level_list', submode='output_numpy_float_array', verbose=0)
+		shapeND = [int(x) for x in shapeND]
+		slice_shape = self.config_raw_data[self.keys[0]][self.keys[1]]['slice_shape']
+		slice_shape = sanitize_json_strings(slice_shape, mode='one_level_list', submode='output_numpy_float_array', verbose=0)		
+		data_dict['shapeND'] = shapeND
+		data_dict['slice_shape'] = slice_shape
+		shell_extension = self.config_raw_data[self.keys[0]][self.keys[1]]['shell_extension']
+		data_dict['shell_extension'] = sanitize_json_strings(shell_extension, mode='two_level_list', submode='output_tuple_int', verbose=0)
+		save_gif, save_static_figures = self.get00003_figure_toggles()
+		data_dict['save_static_figures'] = bool(int(save_static_figures))
+		data_dict['save_gif'] = bool(int(save_gif))
+		if verbose > 9:
+			for this_key in data_dict: print("  ", this_key, ":" , data_dict[this_key], "[",type(data_dict[this_key]),"]")
+		return data_dict

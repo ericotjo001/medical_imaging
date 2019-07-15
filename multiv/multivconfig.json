@@ -23,9 +23,9 @@
       "save_gif": "1"
     },
     "dualview2D_test": {
-      "np.shape": "[12,8]",
-      "slice_shape": "[[1,2];[1,1]]",
-      "shell_shape": "[[2,3];[2,2]]",
+      "np.shape": "[6, 8]",
+      "slice_shape": "[[0,1];[1,1]]",
+      "shell_shape": "[[1,1];[2,1]]",
       "n_sample": "10",
       "save_static_figures": "1",
       "save_gif": "1"
@@ -33,8 +33,22 @@
     "dualview3D_test": {
       "np.shape": "[6, 8, 5]",
       "slice_shape": "[[1,0];[1,1];[1,1]]",
-      "shell_shape": "[[1,1];[2,1];[2,1]]",
+      "shell_shape": "[[1,1];[2,1];[2,2]]",
       "n_sample": "10",
+      "save_static_figures": "1",
+      "save_gif": "1"
+    },
+    "dualuniform2D_test": {
+      "np.shape": "[6, 8]",
+      "slice_shape": "[2, 3]",
+      "shell_extension": "[[2,3];[1,0]]",
+      "save_static_figures": "1",
+      "save_gif": "1"
+    },
+    "dualuniform3D_test": {
+      "np.shape": "[6, 8, 5]",
+      "slice_shape": "[2, 3, 3]",
+      "shell_extension": "[[1,1];[1,1];[1,1]]",
       "save_static_figures": "1",
       "save_gif": "1"
     }

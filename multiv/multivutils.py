@@ -39,6 +39,17 @@ def clear_square_brackets(x):
 			break
 	return x
 
+def clear_white_spaces_string_front_back(x):
+	while True:
+		if x[0]==' ': x = x[1:]
+		else: break
+	x = x[::-1]
+	while True:
+		if x[0]==' ': x = x[1:]
+		else: break
+	return x[::-1]
+
+
 def repeat_split(this_string, delimiter):
 	out = []
 	while this_string.find(delimiter) > -1:
@@ -72,7 +83,9 @@ def sanitize_json_strings(x, mode='one_level_list', submode='output_numpy_float_
 			if verbose > 199: print("  ", clear_square_brackets(y))
 			temp.append(clear_square_brackets(y))
 		if submode =='output_numpy_float_array': out = np.array([float(y) for y in temp])
-		elif submode is None: out = temp
+		elif submode =='output_numpy_int_array': out = np.array([int(y) for y in temp])
+		elif submode =='output_tuple_int': out = tuple([int(y) for y in temp])
+		elif submode is None: out = [clear_white_spaces_string_front_back(x) for x in temp]
 		return out
 	if mode == 'two_level_list':
 		"""
@@ -95,9 +108,18 @@ def sanitize_json_strings(x, mode='one_level_list', submode='output_numpy_float_
 			out = []
 			for y in temp: out.append(np.array(y, dtype=np.float))
 			out = np.array(out)
+		elif submode =='output_numpy_int_array': 
+			out = []
+			for y in temp: out.append(np.array(y, dtype=np.int))
+			out = np.array(out)
+		elif submode =='output_tuple_int':
+			out = []
+			for y in temp: out.append(tuple(np.array(y, dtype=np.int)))
+			# out = np.array(out)
 		elif submode is None: out = temp
 		return out
-	return 
+	return
+
 
 
 dir_path=os.getcwd()
@@ -127,7 +149,7 @@ generate_config
 
 test
   These tests are supplied as demonstration of the functions' usage.
-  Refer to multivtests.py for details of implementation.
+  Refer to multivtests.py or the tutorials for details of implementation.
   Submode
   (1) multiv_test1 (Default). 
     No function.
@@ -159,6 +181,14 @@ test
     "global" slices uniformly
     Example usage:
     python multiv.py --mode test --submode dualview3D_test
+  (8) dualuniform2D_test
+    This test shows how 2D array is uniformly sliced, but with envelop.
+    Example usage:
+    python multiv.py --mode test --submode dualuniform2D_test
+  (9) dualuniform3D_test
+    This test shows how 3D array is uniformly sliced, but with envelop.
+    Example usage:
+    python multiv.py --mode test --submode dualuniform3D_test
 '''
 
 

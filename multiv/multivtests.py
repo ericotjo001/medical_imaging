@@ -18,6 +18,10 @@ def dualview2D_test(config_dir=None, verbose=10):
 	if verbose > 9: print("Running dualview2D_test().")
 	dualview('2', config_dir, verbose=10)
 
+def dualuniform2D_test(config_dir=None, verbose=10):
+	if verbose > 9: print("Running dualuniform2D_test().")
+	dualuniform('2', config_dir, verbose=20)
+
 '''
 3D TEST
 '''
@@ -33,17 +37,59 @@ def multiv_unirand3D_test(config_dir=None, verbose=10):
 
 def dualview3D_test(config_dir=None, verbose=10):
 	if verbose > 9: print("Running dualview3D_test().")
-	else: raise Exception('dimension error!') 
+	dualview('3', config_dir, verbose=20)
 
-	if this_dir is None: this_dir = 'multivconfig.json'
-
-def dualview3D_test(config_dir=None, verbose=10):
-	if verbose > 9: print("Running dualview3D_test().")
-	dualview('3', config_dir, verbose=10)
+def dualuniform3D_test(config_dir=None, verbose=10):
+	if verbose > 9: print("Running dualuniform2D_test().")
+	dualuniform('3', config_dir, verbose=20)
 
 '''
 DETAILED TESTS IMPLEMENTATIONS
 '''
+def dualuniform(dim, config_dir, verbose=10):
+	if dim == '2': config_keyword = 'dualuniform2D_test'
+	elif dim == '3': config_keyword = 'dualuniform3D_test'
+	else: raise Exception('dimension error!')
+	if config_dir is None: config_dir = 'multivconfig.json'
+	conf = ConfigParser(config_dir, ['test', config_keyword])
+	data_dict = conf.get_config_data(verbose=10)
+
+	""" Generate random testing data """
+	x, img_arr = aux00002_generate_data(dim, data_dict, verbose)
+
+	if dim == '2': 
+		mN = MultiViewSlicer2D(x.shape)
+		mN.multiview_slice_and_dice_zero_padded(x, data_dict['slice_shape'], data_dict['shell_extension'], verbose)
+		Img_arr = mN.X.transpose()
+	elif dim == '3':
+		mN = MultiViewSlicer3D(x.shape)
+		mN.multiview_slice_and_dice_zero_padded(x, data_dict['slice_shape'], data_dict['shell_extension'], verbose)
+		Img_arr = mN.X
+
+	filenames = []	
+	gifname = config_keyword + '.gif'
+	'''
+	Note that minor and major slices are slices of mN.X, i.e. the padded version, not x
+	'''
+	for i, the_slices in enumerate(zip(mN.slice_collection , mN.minor_view_slice_collection , mN.major_view_slice_collection)):
+		""" Get the rectangles marking the slices on the exploded view """
+		this_slice, minor_slice, major_slice = tuple(the_slices[0]), tuple(the_slices[1]), tuple(the_slices[2])
+		if dim == '2':
+			temp_dir, fps = 'gif_making_dual_temp', 1.2
+			xran, yran = range(mN.X.shape[0])[minor_slice[0]], range(mN.X.shape[1])[minor_slice[1]]
+			xSran, ySran = range(mN.X.shape[0])[major_slice[0]], range(mN.X.shape[1])[major_slice[1]]
+			rect = patches.Rectangle((xran[0], yran[0]),len(xran),len(yran),linewidth=3,edgecolor='g',facecolor='none')	
+			rectS = patches.Rectangle((xSran[0], ySran[0]),len(xSran),len(ySran),linewidth=5,edgecolor='r',facecolor='none')			
+			delineate, delineate_shell = rect, rectS
+			filename = aux00003_3_generate_one_static_image_frame(dim, Img_arr, i, delineate, delineate_shell, temp_dir)
+		if dim=='3':
+			temp_dir, fps = 'gif3D_making_dual_temp', 0.4
+			""" Get the cube marking the slice"""
+			from mpl_toolkits.mplot3d import Axes3D
+			filename = aux00003_3_generate_one_static_image_frame(dim, Img_arr, i, minor_slice, major_slice, temp_dir)
+		filenames.append(filename)
+	if data_dict['save_gif']: aux00001_1_save_gif_from_temp_folder(filenames, gifname, dim, fps=fps)	
+	if not data_dict['save_static_figures']: print("\nRemoving temp img folder...") ;shutil.rmtree(temp_dir)
 
 def dualview(dim, config_dir, verbose=10):
 	if dim == '2': config_keyword = 'dualview2D_test'
