@@ -38,3 +38,13 @@ See the implementations of the sampler class objects from multivtests.py or from
 
 Dependencies: read the imports in multivutils.py
 Note that tests are conducted in Windows 10, python 3.6. 
+
+## 3. isles2017
+This folder contains implementation of neural networks for ischemic stroke lesion segmentation. The following site is where the challenge is described http://www.isles-challenge.org/ISLES2017/.
+Simply run the following
+```
+python main.py
+```
+to find out the command to create the default configuration file, and then the command to run training and evaluation.
+utils/utils.py header contains all the imported packages used in this project, hence all the dependencies could be found there.
+Note that tests are conducted in Windows 10, python 3.6. 
