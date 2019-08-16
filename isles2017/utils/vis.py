@@ -30,7 +30,7 @@ class SlidingVisualizer(object):
 		ax_mod = plt.axes([posx, posy + 0.05, widthx_fraction, widthy_fraction], facecolor=axcolor)
 		s_mod = Slider(ax_mod, 'modality', 0, 6, valinit=modality_index, valstep=1)
 		ax_cbar = plt.axes([posx, posy + 0.05*2, widthx_fraction, widthy_fraction], facecolor=axcolor)
-		s_cbar = Slider(ax_cbar, 'cbar factor', 0, 1, valinit=1, valstep=0.05)
+		s_cbar = Slider(ax_cbar, 'cbar factor', 0, 1, valinit=1, valstep=0.01)
 
 		def update(val):
 			current_x = one_case['imgobj'][self.canonical_modalities_dict[s_mod.val]]

@@ -4,9 +4,9 @@ DEBUG_COMPONENT = 0
 
 class ConvBlocksUNet(nn.Module):
 	"""docstring for ConvBlocksUNet"""
-	def __init__(self, label, batch_norm, device=None):
+	def __init__(self, label, batch_norm):
 		super(ConvBlocksUNet, self).__init__()
-		self.this_device = device
+		# self.this_device = device
 		self.label = label
 		self.batch_norm = batch_norm
 	
@@ -23,8 +23,8 @@ class ConvBlocksUNet(nn.Module):
 		return
 
 	def convblock(self, in_channel, out_channel, kernel_size, padding=0, stride=1, dilation=1, batch_norm=True):
-		conv = nn.Conv3d(in_channel, out_channel, kernel_size, padding=padding, stride=stride, dilation=dilation).to(device=self.this_device)  
-		if self.batch_norm: convbn = nn.BatchNorm3d(out_channel).to(device=self.this_device)
+		conv = nn.Conv3d(in_channel, out_channel, kernel_size, padding=padding, stride=stride, dilation=dilation)#.to(device=self.this_device)  
+		if self.batch_norm: convbn = nn.BatchNorm3d(out_channel)##.to(device=self.this_device)
 		else: convbn = None
 		return conv, convbn
 
@@ -57,9 +57,9 @@ class ConvBlocks(nn.Module):
 	def convblock(self, in_channel, out_channel, kernel_size, padding=0, stride=1, dilation=1):
 		conv = nn.Conv3d(in_channel, out_channel, kernel_size, padding=padding, stride=stride, dilation=dilation)
 		convbn = nn.BatchNorm3d(out_channel)
-		if self.this_device is not None:
-			conv = conv.to(device=self.this_device)  
-			convbn = convbn.to(device=self.this_device)
+		# if self.this_device is not None:
+		# 	conv = conv#.to(device=self.this_device)  
+		# 	convbn = convbn#.to(device=self.this_device)
 		return conv, convbn
 
 	def convblocks_without_bn(self,in_channels, out_channels, kernel_sizes, paddings, strides, dilations):
@@ -72,7 +72,7 @@ class ConvBlocks(nn.Module):
 	def convblock_without_bn(self, in_channel, out_channel, kernel_size, padding=0, stride=1, dilation=1):
 		conv = nn.Conv3d(in_channel, out_channel, kernel_size, padding=padding, stride=stride, dilation=dilation)
 		if self.this_device is not None:
-			conv = conv.to(device=self.this_device)  
+			conv = conv#.to(device=self.this_device)  
 		return conv
 
 	def forward(self, x):
@@ -101,8 +101,8 @@ class ConvBlocksPool(nn.Module):
 		conv = nn.Conv3d(in_channel, out_channel, kernel_size, padding=padding, stride=stride, dilation=dilation)
 		pool =  nn.MaxPool3d((1,2,2), stride=(1,2,2), ceil_mode=True)
 		if self.this_device is not None:
-			conv = conv.to(device=self.this_device)  
-			pool = pool.to(device=self.this_device)
+			conv = conv#.to(device=self.this_device)  
+			pool = pool#.to(device=self.this_device)
 		return conv,  pool
 
 	def forward(self, x):
@@ -111,7 +111,6 @@ class ConvBlocksPool(nn.Module):
 			x = F.elu(x)
 			x = getattr(self,'pool'+str(i))(x)
 		return x
-
 
 
 class ModulePlus(nn.Module):
@@ -188,3 +187,6 @@ class ModulePlus(nn.Module):
 		for m in self.modules():
 			if isinstance(m, nn.Conv3d):
 				torch.nn.init.kaiming_normal_(m.weight)
+
+
+

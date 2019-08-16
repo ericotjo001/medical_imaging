@@ -2,25 +2,23 @@
   "working_dir": "D:/Desktop@D/meim2venv/meim3",
   "dir_ISLES2017": "D:/Desktop@D/meim2venv/meim3/data/isles2017",
   "relative_checkpoint_dir": "checkpoints",
-  "model_label_name": "UNet3D_XXXXXX",
-  "training_mode": "UNet3D",
-  "evaluation_mode": "UNet3D_overfit",
-  "debug_test_mode": "test_load_many_ISLES2017",
+  "model_label_name": "PSPNet_XXXXXX",
+  "training_mode": "PSPNet",
+  "evaluation_mode": "PSPNet_overfit",
+  "debug_test_mode": "test_data_augmentation",
   "basic_1": {
     "batch_size": "2",
     "n_epoch": "5",
     "save_model_every_N_epoch": "1"
   },
-  "FCN_1": {
-    "resize": "[192,192,19]"
-  },
-  "FCN8like": {
+  "dataloader": {
     "resize": "[192,192,19]"
   },
   "learning": {
     "mechanism": "SGD",
     "momentum": "0.9",
-    "learning_rate": "0.01"
+    "learning_rate": "0.01",
+    "weight_decay": "0.00001"
   },
   "normalization": {
     "ADC_source_min_max": "[0, 5000]",
@@ -38,6 +36,6 @@
   },
   "augmentation": {
     "type": "rotate_then_clip_translate",
-    "number_of_data_augmented_per_case": "2"
+    "number_of_data_augmented_per_case": "10"
   }
 }

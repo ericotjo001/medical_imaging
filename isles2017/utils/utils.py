@@ -23,7 +23,7 @@ number_of_classes = 2 # 0,1
 
 DESCRIPTION = '''\t\t\t=== Welcome to meim3/main.py! ===
 
-__INSERT DESCRIPTION__
+Implementations of 3D versions of several neural network to handle ISLES 2017 Ischemic Stroke Lesion Segmentation.
 
 Modes:
 (1) info
@@ -58,9 +58,9 @@ CONFIG_FILE = {
 	'working_dir':"D:/Desktop@D/meim2venv/meim3",
 	'dir_ISLES2017':"D:/Desktop@D/meim2venv/meim3/data/isles2017",
 	'relative_checkpoint_dir':'checkpoints',
-	'model_label_name': 'UNet3D_XXXXXX',
-	'training_mode': 'UNet3D',
-	'evaluation_mode': 'UNet3D_overfit',
+	'model_label_name': 'PSPNet_XXXXXX',
+	'training_mode': 'PSPNet',
+	'evaluation_mode': 'PSPNet_overfit',
 	'debug_test_mode':"test_load_many_ISLES2017",
 	
 	'basic_1':{
@@ -68,16 +68,14 @@ CONFIG_FILE = {
 		'n_epoch' : "5",
 		'save_model_every_N_epoch': "1"
 	},
-	'FCN_1':{
-		'resize' : "[192,192,19]"
-	},
-	'FCN8like':{
+	'dataloader':{
 		'resize' : "[192,192,19]"
 	},
 	'learning':{
 		'mechanism':"SGD",
 		'momentum':"0.9",
-		'learning_rate':"0.01"
+		'learning_rate':"0.01",
+		'weight_decay':"0.00001"
 		},
 	'normalization': {
 		"ADC_source_min_max": "[0, 5000]",
@@ -118,16 +116,14 @@ def prepare_config(config_raw_data):
 	config_data['basic_1']['n_epoch'] = int(config_raw_data['basic_1']['n_epoch'])
 	config_data['basic_1']['save_model_every_N_epoch'] = int(config_raw_data['basic_1']['save_model_every_N_epoch'])
 
-	config_data['FCN_1'] = {}
-	config_data['FCN_1']['resize'] = sanitize_json_strings(config_raw_data['FCN_1']['resize'], mode='one_level_list', submode='output_numpy_int_array', verbose=0)
-
-	config_data['FCN8like'] = {}
-	config_data['FCN8like']['resize'] = sanitize_json_strings(config_raw_data['FCN8like']['resize'], mode='one_level_list', submode='output_numpy_int_array', verbose=0)
+	config_data['dataloader'] = {}
+	config_data['dataloader']['resize'] = sanitize_json_strings(config_raw_data['dataloader']['resize'], mode='one_level_list', submode='output_numpy_int_array', verbose=0)
 
 	learning = {}
 	learning['mechanism'] = config_raw_data['learning']['mechanism']
 	learning['momentum'] = float(config_raw_data['learning']['momentum'])
 	learning['learning_rate'] = float(config_raw_data['learning']['learning_rate'])
+	learning['weight_decay'] = float(config_raw_data['learning']['weight_decay'])
 	config_data['learning'] = learning
 
 	normalization = {}

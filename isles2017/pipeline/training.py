@@ -1,14 +1,126 @@
 from utils.utils import *
 from dataio.dataISLES2017 import ISLES2017mass
 import utils.loss as uloss
+import utils.evalobj as ev
 import models.networks as net
 
-DEBUG_CASE_NUMBERS = range(1,10) # default is None
+DEBUG_CASE_NUMBERS = None #  range(1,5) # default is None
 DEBUG_TRAINING_LOOP = 0
 DEBUG_LABELS_RESHAPE = 0 # if memory usage too large without reshaping during tests. Set to "resize": "[124,124,9]" when testing
 DEBUG_DATA_LOADING = 0
 
 n_NSC, n_NSCy = 2, 1 # number of nonspatial dimension
+
+def training_segnet(config_data):
+	print("training_segnet()")
+	case_numbers = range(1,49)
+	if DEBUG_CASE_NUMBERS is not None: case_numbers = DEBUG_CASE_NUMBERS
+	case_type = 'training'
+
+	ISLESDATA = ISLES2017mass()
+	ISLESDATA.directory_path = config_data['dir_ISLES2017']
+	ISLESDATA.load_many_cases_type0003(case_type, case_numbers, config_data,normalize=True)
+	if DEBUG_DATA_LOADING: return
+	trainloader = DataLoader(dataset=ISLESDATA, num_workers=0, 
+		batch_size=config_data['basic_1']['batch_size'], 
+		shuffle=True)
+	print("  trainloader loaded")
+
+	model_dir = os.path.join(config_data['working_dir'], config_data['relative_checkpoint_dir'],config_data['model_label_name'])
+	main_model_fullpath = os.path.join(model_dir,config_data['model_label_name'] + '.model') 
+	this_net = net.segnet()
+
+	if os.path.exists(main_model_fullpath): this_net = this_net.load_state(config_data); print("Load existing model...")
+	this_net.training_cycle = this_net.training_cycle + 1
+	this_net.write_diary(config_data)
+	net.count_parameters(this_net)
+
+	criterion = nn.CrossEntropyLoss()
+	if config_data['learning']['mechanism'] == 'SGD':
+		optimizer = optim.SGD(this_net.parameters(), lr=config_data['learning']['learning_rate'], 
+			momentum=config_data['learning']['momentum'], weight_decay=config_data['learning']['weight_decay'])
+	cetracker = ev.CrossEntropyLossTracker(config_data, display_every_n_minibatchs=10)
+
+	for i_epoch in range(config_data['basic_1']['n_epoch']):
+		this_net.start_timer()
+		for i, data in enumerate(trainloader, 0):
+			# optimizer.zero_grad()
+			x = data[0].to(this_device).to(torch.float) # interp3d() resizes only x. labels remains in the original shape.
+			labels = data[1].to(this_device).to(torch.float)
+
+			x.transpose_(0+n_NSC,1+n_NSC).transpose_(1+n_NSC,2+n_NSC).transpose_(0+n_NSC,1+n_NSC) # N,C,W,H,D to N,C,D,H,W
+			labels.transpose_(0+n_NSCy,1+n_NSCy).transpose_(1+n_NSCy,2+n_NSCy).transpose_(0+n_NSCy,1+n_NSCy)
+		
+			if DEBUG_TRAINING_LOOP: outputs = this_net.forward_debug(x);break
+
+			outputs = this_net(x).contiguous() # .view((config_data['basic_1']['batch_size'],number_of_classes,)+resize_shape)
+			
+			loss = criterion(outputs, labels.to(torch.int64))
+			cetracker.store_loss(loss) # tracking progress
+			loss.backward()
+			optimizer.step()
+		this_net.stop_timer()
+		if DEBUG_TRAINING_LOOP: break
+		this_net.latest_epoch = this_net.latest_epoch + 1
+		this_net.write_diary_post_epoch(config_data)
+		this_net.save_models(this_net, config_data)
+	cetracker.save_loss_plot()
+
+def training_PSPNet(config_data):
+	print("training_PSPNet()")
+	case_numbers = range(1,49)
+	if DEBUG_CASE_NUMBERS is not None: case_numbers = DEBUG_CASE_NUMBERS
+	case_type = 'training'
+
+	ISLESDATA = ISLES2017mass()
+	ISLESDATA.directory_path = config_data['dir_ISLES2017']
+	ISLESDATA.load_many_cases_type0003(case_type, case_numbers, config_data,normalize=True)
+	if DEBUG_DATA_LOADING: return
+	trainloader = DataLoader(dataset=ISLESDATA, num_workers=0, 
+		batch_size=config_data['basic_1']['batch_size'], 
+		shuffle=True)
+	print("  trainloader loaded")
+
+	model_dir = os.path.join(config_data['working_dir'], config_data['relative_checkpoint_dir'],config_data['model_label_name'])
+	main_model_fullpath = os.path.join(model_dir,config_data['model_label_name'] + '.model') 
+	this_net = net.PSPNet()
+	if os.path.exists(main_model_fullpath): this_net = this_net.load_state(config_data); print("Load existing model...")
+	this_net.training_cycle = this_net.training_cycle + 1
+	this_net.write_diary(config_data)
+	net.count_parameters(this_net)
+
+	criterion, aux_crit = nn.CrossEntropyLoss(), nn.CrossEntropyLoss()
+	if config_data['learning']['mechanism'] == 'SGD':
+		optimizer = optim.SGD(this_net.parameters(), lr=config_data['learning']['learning_rate'], 
+			momentum=config_data['learning']['momentum'], weight_decay=config_data['learning']['weight_decay'])
+	cetracker = ev.CrossEntropyLossTracker(config_data, display_every_n_minibatchs=10)
+
+	for i_epoch in range(config_data['basic_1']['n_epoch']):
+		this_net.start_timer()
+		for i, data in enumerate(trainloader, 0):
+			# optimizer.zero_grad()
+			x = data[0].to(this_device).to(torch.float) # interp3d() resizes only x. labels remains in the original shape.
+			labels = data[1].to(this_device).to(torch.float)
+
+			x.transpose_(0+n_NSC,1+n_NSC).transpose_(1+n_NSC,2+n_NSC).transpose_(0+n_NSC,1+n_NSC) # N,C,W,H,D to N,C,D,H,W
+			labels.transpose_(0+n_NSCy,1+n_NSCy).transpose_(1+n_NSCy,2+n_NSCy).transpose_(0+n_NSCy,1+n_NSCy)
+		
+			if DEBUG_TRAINING_LOOP: outputs = this_net.forward_debug(x);break
+
+			outputs, out_aux = this_net(x) # .view((config_data['basic_1']['batch_size'],number_of_classes,)+resize_shape)
+			
+			loss = criterion(outputs, labels.to(torch.int64))
+			cetracker.store_loss(loss) # tracking progress
+			loss.backward(retain_graph=True)
+			loss2 = aux_crit(out_aux, labels.to(torch.int64))
+			loss2.backward()
+			optimizer.step()
+		this_net.stop_timer()
+		if DEBUG_TRAINING_LOOP: break
+		this_net.latest_epoch = this_net.latest_epoch + 1
+		this_net.write_diary_post_epoch(config_data)
+		this_net.save_models(this_net, config_data)
+	cetracker.save_loss_plot()
 
 def training_UNet3D(config_data):
 	print("training_UNet3D()")
@@ -27,7 +139,8 @@ def training_UNet3D(config_data):
 
 	model_dir = os.path.join(config_data['working_dir'], config_data['relative_checkpoint_dir'],config_data['model_label_name'])
 	main_model_fullpath = os.path.join(model_dir,config_data['model_label_name'] + '.model') 
-	this_net = net.UNet3D(device=this_device)
+	this_net = net.UNet3D()
+
 	if os.path.exists(main_model_fullpath): this_net = this_net.load_state(config_data); print("Load existing model...")
 	this_net.training_cycle = this_net.training_cycle + 1
 	this_net.write_diary(config_data)
@@ -35,7 +148,10 @@ def training_UNet3D(config_data):
 
 	criterion = nn.CrossEntropyLoss()
 	if config_data['learning']['mechanism'] == 'SGD':
-		optimizer = optim.SGD(this_net.parameters(), lr=config_data['learning']['learning_rate'], momentum=config_data['learning']['momentum'])
+		optimizer = optim.SGD(this_net.parameters(), lr=config_data['learning']['learning_rate'], 
+			momentum=config_data['learning']['momentum'], weight_decay=config_data['learning']['weight_decay'])	
+	cetracker = ev.CrossEntropyLossTracker(config_data, display_every_n_minibatchs=10)
+
 	for i_epoch in range(config_data['basic_1']['n_epoch']):
 		this_net.start_timer()
 		for i, data in enumerate(trainloader, 0):
@@ -49,9 +165,10 @@ def training_UNet3D(config_data):
 			if DEBUG_TRAINING_LOOP: outputs = this_net.forward_debug(x);break
 
 			outputs = this_net(x).contiguous() # .view((config_data['basic_1']['batch_size'],number_of_classes,)+resize_shape)
-			outputs = batch_interp3d(outputs,tuple(labels.shape)[1:], mode='nearest').to(device=this_device).to(torch.float)
+			# outputs = batch_interp3d(outputs,tuple(labels.shape)[1:], mode='nearest').to(device=this_device).to(torch.float)
 
 			loss = criterion(outputs, labels.to(torch.int64))
+			cetracker.store_loss(loss) # tracking progress
 			loss.backward()
 			optimizer.step()
 		this_net.stop_timer()
@@ -59,7 +176,7 @@ def training_UNet3D(config_data):
 		this_net.latest_epoch = this_net.latest_epoch + 1
 		this_net.write_diary_post_epoch(config_data)
 		this_net.save_models(this_net, config_data)
-
+		cetracker.save_loss_plot()
 
 def training_FCN8like(config_data):
 	print("training_FCN8like().")
@@ -78,7 +195,7 @@ def training_FCN8like(config_data):
 
 	model_dir = os.path.join(config_data['working_dir'], config_data['relative_checkpoint_dir'],config_data['model_label_name'])
 	main_model_fullpath = os.path.join(model_dir,config_data['model_label_name'] + '.model') 
-	this_net = net.FCN8like(device=this_device)
+	this_net = net.FCN8like()
 	if os.path.exists(main_model_fullpath): this_net = this_net.load_state(config_data); print("Load existing model...")
 	this_net.training_cycle = this_net.training_cycle + 1
 	this_net.write_diary(config_data)
@@ -86,7 +203,10 @@ def training_FCN8like(config_data):
 
 	criterion = nn.CrossEntropyLoss()
 	if config_data['learning']['mechanism'] == 'SGD':
-		optimizer = optim.SGD(this_net.parameters(), lr=config_data['learning']['learning_rate'], momentum=config_data['learning']['momentum'])
+		optimizer = optim.SGD(this_net.parameters(), lr=config_data['learning']['learning_rate'], 
+			momentum=config_data['learning']['momentum'], weight_decay=config_data['learning']['weight_decay'])
+	cetracker = ev.CrossEntropyLossTracker(config_data, display_every_n_minibatchs=10)
+
 
 	for i_epoch in range(config_data['basic_1']['n_epoch']):
 		this_net.start_timer()
@@ -101,9 +221,10 @@ def training_FCN8like(config_data):
 			if DEBUG_TRAINING_LOOP: outputs = this_net.forward_debug(x);break
 
 			outputs = this_net(x).contiguous() # .view((config_data['basic_1']['batch_size'],number_of_classes,)+resize_shape)
-			outputs = batch_interp3d(outputs,tuple(labels.shape)[1:], mode='nearest').to(device=this_device).to(torch.float)
+			# outputs = batch_interp3d(outputs,tuple(labels.shape)[1:], mode='nearest').to(device=this_device).to(torch.float)
 
 			loss = criterion(outputs, labels.to(torch.int64))
+			cetracker.store_loss(loss) # tracking progress
 			loss.backward()
 			optimizer.step()
 		this_net.stop_timer()
@@ -111,6 +232,12 @@ def training_FCN8like(config_data):
 		this_net.latest_epoch = this_net.latest_epoch + 1
 		this_net.write_diary_post_epoch(config_data)
 		this_net.save_models(this_net, config_data)
+	cetracker.save_loss_plot()
+
+
+########################################################################################
+# Here onwards for testing only
+########################################################################################
 
 def training_FCN_1(config_data):
 	print("training_FCN_1().")

@@ -44,7 +44,15 @@ def test_data_augmentation(config_dir):
 	one_case['TTT']: 93
 	one_case['smir_id']: 127206
 	'''
-	one_case_modified = one_case
+	one_case_modified = {}
+	one_case_modified['imgobj'] = {}
+	for x_modality in canonical_modalities_label:
+		if x_modality=='OT': continue
+		x1_component = one_case['imgobj'][x_modality]
+		x1_component = normalize_numpy_array(x1_component,target_min=0,target_max=1,source_min=np.min(x1_component),source_max=np.max(x1_component),)
+		x1_component = np.clip(x1_component,0.0,0.5)
+		one_case_modified['imgobj'][x_modality] = x1_component
+	one_case_modified['imgobj']['OT'] = one_case['imgobj']['OT']
 
 	vis = vi.SlidingVisualizer()
 	vis.vis2(one_case,one_case_modified)
@@ -81,14 +89,16 @@ def test_load_ISLES2017(config_dir):
 		max |       | 4095             | 89.48501         | 207.20389        | 40.0             | 123.06382        | 121.76149        | 1                |
 		mean|       | 195.55737        | 1.07344          | 3.85694          | 0.37295          | 1.37612          | 6.11271          | 0.00549          |
 	
-	From the result, let us make the following naive normalization specifications. We convert to [0,1] from the following interval.
-	 | ADC              0, 5000
-	 | MTT              -5, 100
-	 | rCBF             -500, 300
-	 | rCBV             -60, 40
-	 | Tmax             -5, 150
-	 | TTP              -2, 150
-	 | OT               NONE
+	(!!!) Impt the following normalization appears to be suitable after observing the data. The intensities are not very compatible with each other
+			From the result, let us make the following naive normalization specifications. We convert to [0,1] from the following interval.
+			 | ADC              0, 5000
+			 | MTT              -5, 100
+			 | rCBF             -500, 300
+			 | rCBV             -60, 40
+			 | Tmax             -5, 150
+			 | TTP              -2, 150
+			 | OT               NONE
+			
 	'''
 	print("\nPrinting data shapes.")
 	print("  %-4s|%-7s| %-16s | %-16s | %-16s | %-16s | %-16s | %-16s | %-16s |"%('c_no', 'smir_id','ADC','MTT' , 'rCBF', 'rCBV', 'Tmax','TTP','OT'))

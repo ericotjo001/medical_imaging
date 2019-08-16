@@ -229,11 +229,15 @@ class ISLES2017mass(ISLES2017):
 
 	def load_many_cases_type0003(self, case_type, case_numbers, config_data,
 		normalize=True):
+		'''
+		Normalization. In this data load type, we normalize against the min and max
+		of each data point. Hence source_min_max configurations are irrelevant
+		'''
 
 		canonical_modalities_label = ['ADC','MTT','rCBF','rCBV' ,'Tmax','TTP','OT']
 		modalities_dict = {0:'ADC',1:'MTT',2:'rCBF',3:'rCBV' ,4:'Tmax',5:'TTP'}
 		data_size = 0
-		resize_shape = tuple(config_data['FCN_1']['resize'])
+		resize_shape = tuple(config_data['dataloader']['resize'])
 
 		available_case_numbers = []
 		for case_number in case_numbers:
@@ -249,8 +253,8 @@ class ISLES2017mass(ISLES2017):
 				if normalize:  x1_component = normalize_numpy_array(x1_component,
 					target_min=config_data['normalization'][modalities_dict[modality_key]+"_target_min_max"][0],
 					target_max=config_data['normalization'][modalities_dict[modality_key]+"_target_min_max"][1],
-					source_min=config_data['normalization'][modalities_dict[modality_key]+"_source_min_max"][0],
-					source_max=config_data['normalization'][modalities_dict[modality_key]+"_source_min_max"][1], 
+					source_min=np.min(x1_component),#config_data['normalization'][modalities_dict[modality_key]+"_source_min_max"][0],
+					source_max=np.max(x1_component),#config_data['normalization'][modalities_dict[modality_key]+"_source_min_max"][1], 
 					verbose = 0)
 				x1_component = torch.tensor(x1_component)
 				x1[modality_key,:,:,:] = interp3d(x1_component,resize_shape)
@@ -282,7 +286,7 @@ class ISLES2017mass(ISLES2017):
 					if DEBUG_AUG_NUMBER > 0: 
 						if i >=DEBUG_AUG_NUMBER: break
 		self.data_size = data_size
-		print("available_case_numbers:%s"%(str(data_size)))
+		print("data size:%s"%(str(data_size)))
 		print("case_numbers:%s"%(str(available_case_numbers)))
 
 	def load_type0003_aug001(self, i, x1, y1, aug):
