@@ -44,7 +44,7 @@ def training_segnet(config_data):
 	for i_epoch in range(config_data['basic_1']['n_epoch']):
 		this_net.start_timer()
 		for i, data in enumerate(trainloader, 0):
-			# optimizer.zero_grad()
+			optimizer.zero_grad()
 			x = data[0].to(this_device).to(torch.float) # interp3d() resizes only x. labels remains in the original shape.
 			labels = data[1].to(this_device).to(torch.float)
 
@@ -98,7 +98,7 @@ def training_PSPNet(config_data):
 	for i_epoch in range(config_data['basic_1']['n_epoch']):
 		this_net.start_timer()
 		for i, data in enumerate(trainloader, 0):
-			# optimizer.zero_grad()
+			optimizer.zero_grad()
 			x = data[0].to(this_device).to(torch.float) # interp3d() resizes only x. labels remains in the original shape.
 			labels = data[1].to(this_device).to(torch.float)
 
