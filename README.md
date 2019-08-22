@@ -11,6 +11,8 @@ to find out the command to create the default configuration file, and then the c
 utils/utils.py header contains all the imported packages used in this project, hence all the dependencies could be found there.
 Note that tests are conducted in Windows 10, python 3.6. 
 
+Current state: [Update Ongoing]. Evaluation is now performed only on training data. State-of-the-art algorithms still have troubles achieving high Dice score even for the training dataet.
+
 ## 2. Multiv
 While working on medical images, for example in NIFTI formats, we might face memory problem. This is because a NIFTI volume might come in large sizes, for example 192x192x19 with 6 modalities. With large convolutional neural network, feeding the entire volume may result in out of memory error (at least my measly 4GB RAM does. Multi-view sampling is the way out of this. Using multi-view sampling, slices of the images (green rectangles) are sampled. The "multi" part of the multi-view can take the form of larger slice (red rectangles).
 
