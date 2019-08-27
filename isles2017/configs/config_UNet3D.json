@@ -7,8 +7,8 @@
   "evaluation_mode": "UNet3D_overfit",
   "debug_test_mode": "test_load_many_ISLES2017",
   "basic_1": {
-    "batch_size": "2",
-    "n_epoch": "5",
+    "batch_size": "1",
+    "n_epoch": "100",
     "save_model_every_N_epoch": "1"
   },
   "dataloader": {

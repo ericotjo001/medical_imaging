@@ -20,6 +20,7 @@ class ConvBlocksUNet(nn.Module):
 			conv, convbn = self.convblock(param[0], param[1], param[2], padding=param[3], stride=param[4], dilation=param[5])
 			setattr(self, 'conv_'+ str(self.label) + "_" +str(i), conv)
 			if self.batch_norm: setattr(self, 'bn3d_'+ str(self.label)+ "_"  +str(i), convbn)	
+			setattr(self, 'act_'+str(self.label)+"_"+str(i), nn.LeakyReLU(0.2, inplace=True))
 		return
 
 	def convblock(self, in_channel, out_channel, kernel_size, padding=0, stride=1, dilation=1, batch_norm=True):
@@ -32,8 +33,9 @@ class ConvBlocksUNet(nn.Module):
 		if DEBUG_COMPONENT: print("  Components: ConvBlocksUNet()")
 		for i in range(2):	
 			x = getattr(self,'conv_'+ str(self.label) + "_"+ str(i))(x)
-			x = F.relu(x)
 			if self.batch_norm: x = getattr(self,'bn3d_'+ str(self.label) + "_" + str(i))(x)
+			x = getattr(self, 'act_'+str(self.label)+"_"+str(i))(x)
+			# x = F.relu(x)
 
 			if DEBUG_COMPONENT: print("    x.shape:%s"%(str(x.shape)))
 		return x
@@ -78,8 +80,8 @@ class ConvBlocks(nn.Module):
 	def forward(self, x):
 		for i in range(self.number_of_blocks):
 			x = getattr(self,'conv'+str(i))(x)
-			x = F.elu(x)
 			if not self.without_bn: x = getattr(self,'bn3d'+str(i))(x)
+			x = F.elu(x)
 		return x
 
 class ConvBlocksPool(nn.Module):
@@ -111,7 +113,6 @@ class ConvBlocksPool(nn.Module):
 			x = F.elu(x)
 			x = getattr(self,'pool'+str(i))(x)
 		return x
-
 
 class ModulePlus(nn.Module):
 	"""docstring for ModulePlus"""
@@ -164,15 +165,18 @@ class ModulePlus(nn.Module):
 
 		checker = self.latest_epoch % config_data['basic_1']['save_model_every_N_epoch']	
 		if checker == 0:
-			# print("save_models(). epoch_to_save=%s"%(str(self.latest_epoch)))
+			print("    save_models(). epoch_to_save=%s"%(str(self.latest_epoch)))
 			self.saved_epochs.append(self.latest_epoch)
-			output = open(artifact_fullpath, 'wb')
-			pickle.dump(model, output)
-			output.close()
-			
-		output = open(main_model_fullpath, 'wb')
-		pickle.dump(model, output)
-		output.close()
+			torch.save(self.state_dict(), artifact_fullpath)
+			# output = open(artifact_fullpath, 'wb')
+			# pickle.dump(model, output)
+			# output.close()
+		
+		# torch.save(self.state_dict(), main_model_fullpath)
+		if os.path.exists(main_model_fullpath): os.remove(main_model_fullpath)
+		output2 = open(main_model_fullpath, 'wb')
+		pickle.dump(model, output2)
+		output2.close()
 
 	def load_state(self, config_data):
 		model_dir = os.path.join(config_data['working_dir'], config_data['relative_checkpoint_dir'],config_data['model_label_name'])
@@ -183,7 +187,7 @@ class ModulePlus(nn.Module):
 		return model
 
 	def _init_weight(self):
-		print("Init weight from ModulePlus!")
+		# print("Init weight from ModulePlus!")
 		for m in self.modules():
 			if isinstance(m, nn.Conv3d):
 				torch.nn.init.kaiming_normal_(m.weight)

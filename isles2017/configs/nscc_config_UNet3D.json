@@ -1,14 +1,14 @@
 {
-  "working_dir": "D:/Desktop@D/meim2venv/meim3",
-  "dir_ISLES2017": "D:/Desktop@D/meim2venv/meim3/data/isles2017",
+  "working_dir": "/mnt",
+  "dir_ISLES2017": "/mnt/data/isles2017",
   "relative_checkpoint_dir": "checkpoints",
   "model_label_name": "UNet3D_XXXXXX",
   "training_mode": "UNet3D",
   "evaluation_mode": "UNet3D_overfit",
   "debug_test_mode": "test_load_many_ISLES2017",
   "basic_1": {
-    "batch_size": "2",
-    "n_epoch": "5",
+    "batch_size": "1",
+    "n_epoch": "100",
     "save_model_every_N_epoch": "1"
   },
   "dataloader": {

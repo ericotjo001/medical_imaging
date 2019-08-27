@@ -228,6 +228,7 @@ class UNet3D(ModulePlus):
 			self.cblocks7.conv_three_blocks([64+128,64],[64,64],[3,3],[1,1],[1,1],[1,1])
 			
 			self.convf = nn.Conv3d(64, number_of_classes, 1, padding=0, stride=1, dilation=1)#.to(device=device)  
+			self.bn = nn.BatchNorm3d(number_of_classes)
 		else:
 			self.cblocks1 = ConvBlocksUNet(1, batch_norm, )
 			self.cblocks1.conv_three_blocks([input_channel,3],[3,4],[3,3],[1,1],[1,1],[1,1])
@@ -250,6 +251,7 @@ class UNet3D(ModulePlus):
 			self.cblocks7.conv_three_blocks([4+6,4],[4,4],[3,3],[1,1],[1,1],[1,1])
 			
 			self.convf = nn.Conv3d(4, number_of_classes, 1, padding=0, stride=1, dilation=1)#.to(device=device)  
+			self.bn = nn.BatchNorm3d(number_of_classes)
 
 		self.pool1 = nn.MaxPool3d(2, stride=2, ceil_mode=True)#.to(device=device)
 		self.pool2 = nn.MaxPool3d(2, stride=2, ceil_mode=True)#.to(device=device)
@@ -284,10 +286,13 @@ class UNet3D(ModulePlus):
 		x = self.cblocks7(x)
 
 		x = self.convf(x)
+		x = self.bn(x)
+		x = F.relu(x)
 		return x
 
 	def forward_debug(self, x):
 		print("UNet3D. forward_debug()")
+		print("  [-1] x.shape:%s"%(str(x.shape)))
 		x = self.cblocks1(x)
 		h1 = torch.Tensor(np.zeros(shape=(x.shape)))
 		h1.data = x.clone()
@@ -330,6 +335,8 @@ class UNet3D(ModulePlus):
 		print("  [7] x.shape:%s"%(str(x.shape)))
 
 		x = self.convf(x)
+		x = self.bn(x)
+		x = F.relu(x)
 		print("  output shape:%s"%(str(x.shape)))
 		return x
 
@@ -574,12 +581,22 @@ class FCN8like(ModulePlus):
 		return h
 
 
+def count_parameters(model, print_param=False):
+	if print_param:
+		for param in model.parameters(): print(param)
+	num_with_grad = sum(p.numel() for p in model.parameters() if p.requires_grad)
+	num_grad = sum(p.numel() for p in model.parameters())
+	print("networks.py. count_parameters()\n  with grad: %s, with or without: %s"%(num_with_grad, num_grad))
+	return num_with_grad, num_grad
+
 ########################################################################################
 # Here onwards for testing only
 ########################################################################################
 
+"""
+# READT TO DEPRECATE
 class CNN_basic(ModulePlus):
-	"""docstring for CNN_basic"""
+
 	def __init__(self, device=None):
 		super(CNN_basic, self).__init__()
 		self.verbose = 0
@@ -636,7 +653,6 @@ class CNN_basic(ModulePlus):
 		return x
 
 class FCN(ModulePlus):
-	"""FCN: this appears to perform horribly"""
 	def __init__(self, device=None):
 		super(FCN, self).__init__()
 		self.verbose = 0
@@ -717,10 +733,4 @@ class FCN(ModulePlus):
 		print("[4] x.shape:",x.shape)
 		return x
 
-def count_parameters(model, print_param=False):
-	if print_param:
-		for param in model.parameters(): print(param)
-	num_with_grad = sum(p.numel() for p in model.parameters() if p.requires_grad)
-	num_grad = sum(p.numel() for p in model.parameters())
-	print("networks.py. count_parameters()\n  with grad: %s, with or without: %s"%(num_with_grad, num_grad))
-	return num_with_grad, num_grad
+"""

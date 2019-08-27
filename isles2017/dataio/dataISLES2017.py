@@ -188,6 +188,9 @@ class ISLES2017mass(ISLES2017):
 				break
 		self.data_size = data_size		
 
+	"""
+	The normalization might not be good, because different data are stored in different order of intensities.
+	
 	def load_many_cases_type0002(self, case_type, case_numbers, config_data,
 		normalize=True):		
 		'''
@@ -226,6 +229,7 @@ class ISLES2017mass(ISLES2017):
 				print("y.shape=%s"%(str(y.shape)))
 				break
 		self.data_size = data_size
+	"""
 
 	def load_many_cases_type0003(self, case_type, case_numbers, config_data,
 		normalize=True):

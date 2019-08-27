@@ -25,6 +25,10 @@ DESCRIPTION = '''\t\t\t=== Welcome to meim3/main.py! ===
 
 Implementations of 3D versions of several neural network to handle ISLES 2017 Ischemic Stroke Lesion Segmentation.
 
+Warning: for CONFIG_FILE, check the relevance of the input. For example, in one particular
+  instance of our implementation, when learning mechanism is adam, momentum is not used. When 
+  SGD is used as the learning mechanism, betas are not relevant.
+
 Modes:
 (1) info
   python main.py
@@ -58,9 +62,9 @@ CONFIG_FILE = {
 	'working_dir':"D:/Desktop@D/meim2venv/meim3",
 	'dir_ISLES2017':"D:/Desktop@D/meim2venv/meim3/data/isles2017",
 	'relative_checkpoint_dir':'checkpoints',
-	'model_label_name': 'PSPNet_XXXXXX',
-	'training_mode': 'PSPNet',
-	'evaluation_mode': 'PSPNet_overfit',
+	'model_label_name': 'UNet3D_XXXXXX',
+	'training_mode': 'UNet3D',
+	'evaluation_mode': 'UNet3D_overfit',
 	'debug_test_mode':"test_load_many_ISLES2017",
 	
 	'basic_1':{
@@ -72,18 +76,19 @@ CONFIG_FILE = {
 		'resize' : "[192,192,19]"
 	},
 	'learning':{
-		'mechanism':"SGD",
+		'mechanism':"adam",
 		'momentum':"0.9",
-		'learning_rate':"0.01",
-		'weight_decay':"0.00001"
+		'learning_rate':"0.0002",
+		'weight_decay':"0.00001",
+		'betas':"[0.5,0.9]",
 		},
 	'normalization': {
-		"ADC_source_min_max": "[0, 5000]",
-		"MTT_source_min_max": "[-5,100]",
-		"rCBF_source_min_max": "[-500, 300]",
-		"rCBV_source_min_max": "[-60, 40]",
-		"Tmax_source_min_max": "[-5, 150]",
-		"TTP_source_min_max": "[-2, 150]",
+		"ADC_source_min_max": "[None, None]", # "[0, 5000]",
+		"MTT_source_min_max": "[None, None]",
+		"rCBF_source_min_max": "[None, None]",
+		"rCBV_source_min_max": "[None, None]",
+		"Tmax_source_min_max": "[None, None]",
+		"TTP_source_min_max": "[None, None]",
 		
 		"ADC_target_min_max": "[0, 1]",
 		"MTT_target_min_max": "[0, 1]",
@@ -93,7 +98,7 @@ CONFIG_FILE = {
 		"TTP_target_min_max": "[0, 1]",
 	},
 	'augmentation': {
-		'type': 'rotate_then_clip_translate',
+		'type': 'no_augmentation',
 		'number_of_data_augmented_per_case': '10',
 	}
 }
@@ -124,6 +129,7 @@ def prepare_config(config_raw_data):
 	learning['momentum'] = float(config_raw_data['learning']['momentum'])
 	learning['learning_rate'] = float(config_raw_data['learning']['learning_rate'])
 	learning['weight_decay'] = float(config_raw_data['learning']['weight_decay'])
+	learning['betas'] = sanitize_json_strings(config_raw_data['learning']['betas'], mode='one_level_list', submode='output_numpy_float_array', verbose=0)
 	config_data['learning'] = learning
 
 	normalization = {}
@@ -200,6 +206,12 @@ def sanitize_json_strings(x, mode='one_level_list', submode='output_numpy_float_
 		for y in x1:
 			if verbose > 199: print("  ", clear_square_brackets(y))
 			temp.append(clear_square_brackets(y))
+		
+		return_None = False
+		for i,y in enumerate(temp): 
+			if clear_white_spaces_string_front_back(y) == "None": temp[i] = None; return_None = True
+		if return_None: return temp
+
 		if submode =='output_numpy_float_array': out = np.array([float(y) for y in temp])
 		elif submode =='output_numpy_int_array': out = np.array([int(y) for y in temp])
 		elif submode =='output_tuple_int': out = tuple([int(y) for y in temp])
