@@ -8,11 +8,16 @@ Collection of codes for medical imaging
   <img width="400" height="250" src="https://github.com/etjoa003/medical_imaging/blob/master/isles2017/_others/LRP%20example%202.JPG?raw=true">
   <img width="400" height="250" src="https://github.com/etjoa003/medical_imaging/blob/master/multiv/Image%20Store/dualview2D_test.gif?raw=true">
 </div>
+<div>
+   <img width="400" height="250" src="http://www.heatmapping.org/tutorial/castle.jpg?raw=true">
+   <img width="400" height="250" src="http://www.heatmapping.org/tutorial/castle.jpg?raw=true">
+  </div>
 <br>
 
 For more details, visit each project folder.
 
 <br>
+
 Related links:
 1. http://heatmapping.org
 2. https://github.com/ozan-oktay/Attention-Gated-Networks/blob/master/utils/util.py
