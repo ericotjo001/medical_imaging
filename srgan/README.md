@@ -13,3 +13,5 @@ solutions that use help to augment network learning in adversarial manner withou
 '''
 python main.py
 '''
+
+**Initial Design**. *The code might not reflect this initial design anymore*.
