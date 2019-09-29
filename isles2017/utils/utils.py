@@ -1,7 +1,10 @@
-import os, argparse, sys, json, time, pickle, time, csv
+from utils.debug_switches import *
+
+import os, argparse, sys, json, time, pickle, time, csv, collections, copy
 import numpy as np
 import nibabel as nib
-import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider, Button, RadioButtons
 
 from PIL import Image
 from multiprocessing import Pool
@@ -14,20 +17,51 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider, Button, RadioButtons
 
 this_device = torch.device('cuda:0')
 number_of_classes = 2 # 0,1
 
 DESCRIPTION = '''\t\t\t=== Welcome to meim3/main.py! ===
 
-Implementations of 3D versions of several neural network to handle ISLES 2017 Ischemic Stroke Lesion Segmentation.
+Implementations of 3D versions of Neural Network to handle ISLES 2017 Ischemic Stroke Lesion Segmentation.
+See http://www.isles-challenge.org/ISLES2017/
+Send me email at ericotjoa@gmail.com if you would like to a sample of trained model.
 
-Warning: for CONFIG_FILE, check the relevance of the input. For example, in one particular
-  instance of our implementation, when learning mechanism is adam, momentum is not used. When 
-  SGD is used as the learning mechanism, betas are not relevant.
+Currently available:
+1. U-Net + LRP. Baseline performance on training dataset can reach the state of the art. Dice score 0.3~0.6 
+
+Minimalistic step-by-step instructions:
+1. run python main.py --mode create_config_file --config_dir config.json 
+2. edit the directories of your ISLES2017 data in the config.json
+3. choose training_mode and evaluation_mode (see below)
+4. run python main.py --mode train --config_dir config.json. The outputs should be in "checkpoints" folder.
+5. run python main.py --mode evaluation --config_dir config.json. The outputs should be in "checkpoints" folder.
+
+Tips: 
+(+) See entry.py shortcut_sequence to create custom training sequences.
+(+) DEBUG modes in utils/debug_switches.py are convenient for debugging. Try them out.
+
+Layerwise Relevance Propagation (LRP). See this website: http://www.heatmapping.org/
+
+Configurations:
+  ** Warning: Not all entries in the configuration files are relevant to specific implementations. 
+    For example, in one particular instance of our implementation, when learning mechanism is adam, 
+    momentum is not used. When SGD is used as the learning mechanism, betas are not relevant.
+
+The following can be found in the configuration file.
+- training_mode. See train() [entry.py].
+
+- data_submode. Generally, find this configuration in [training.py]
+
+- data_modalities. Be aware that the loader is sensitive to the order of the modalities.
+  Some loaders do have some assumptions (for example OT is included), do check it out.
+  Mostly, consider the scripts in dataio/ folder.
+
+- evaluation. See evaluation() [entry.py].
+
+- debug_test_mode. See test() [tests/test.py]
+
+- augmentation. See custom_augment.py, "section config_data['augmentation']['type']" .
 
 Modes:
 (1) info
@@ -38,226 +72,132 @@ Modes:
   python main.py --mode create_config_file
   python main.py --mode create_config_file --config_dir config.json 
 
-(3) test
+(3) test. Ad hoc testing.
   python main.py --mode test
   python main.py --mode test --config_dir config.json 
 
-(4) train
+(4) train. Training network.
   python main.py --mode train
   python main.py --mode train --config_dir config.json
 
-(5) evaluation
+(5) evaluation. Use trained network to perfrom task.
   python main.py --mode evaluation
   python main.py --mode evaluation --config_dir config.json
 
-Configurations:
-The following can be found in the configuration file.
-(1) training_mode. See train() [entry.py].
-(2) evaluation. See evaluation() [entry.py].
-(3) debug_test_mode. See test() [tests/test.py]
-(4) augmentation. See custom_augment.py, "section config_data['augmentation']['type']" .
+(6) lrp. Use Layerwise Relevance Propagation (LRP) for interpretability studies. See description above.
+  python main.py --mode lrp
+  python main.py --mode lrp --config_dir config.json
+
+(X) shorcut_sequence
+  python main.py --mode shortcut_sequence
+  python main.py --mode shortcut_sequence --config_dir config.json
 '''
 
 CONFIG_FILE = {
 	'working_dir':"D:/Desktop@D/meim2venv/meim3",
-	'dir_ISLES2017':"D:/Desktop@D/meim2venv/meim3/data/isles2017",
 	'relative_checkpoint_dir':'checkpoints',
+	'data_directory':{
+		'dir_ISLES2017':"D:/Desktop@D/meim2venv/meim3/data/isles2017",
+	},
+	'data_submode':'load_many_cases_type0003',
+	'data_modalities':['ADC','MTT','rCBF','rCBV' ,'Tmax','TTP','OT'],
 	'model_label_name': 'UNet3D_XXXXXX',
 	'training_mode': 'UNet3D',
-	'evaluation_mode': 'UNet3D_overfit',
+	'evaluation_mode': 'UNet3D_eval_combo',
+	'lrp_mode': 'lrp_UNet3D_overfit_visualizer',
 	'debug_test_mode':"test_load_many_ISLES2017",
 	
-	'basic_1':{
-		'batch_size' : "2",
-		'n_epoch' : "5",
-		'save_model_every_N_epoch': "1"
+	'basic':{
+		'batch_size' : 1,
+		'n_epoch' : 10,
+		'save_model_every_N_epoch': 2,
+		'keep_at_most_n_latest_models':3
 	},
 	'dataloader':{
-		'resize' : "[192,192,19]"
+		'resize' : [192,192,19]
 	},
 	'learning':{
 		'mechanism':"adam",
-		'momentum':"0.9",
-		'learning_rate':"0.0002",
-		'weight_decay':"0.00001",
-		'betas':"[0.5,0.9]",
+		'momentum':0.9,
+		'learning_rate':0.0002,
+		'weight_decay':0.00001,
+		'betas':[0.5,0.9],
 		},
 	'normalization': {
-		"ADC_source_min_max": "[None, None]", # "[0, 5000]",
-		"MTT_source_min_max": "[None, None]",
-		"rCBF_source_min_max": "[None, None]",
-		"rCBV_source_min_max": "[None, None]",
-		"Tmax_source_min_max": "[None, None]",
-		"TTP_source_min_max": "[None, None]",
+		"ADC_source_min_max": [None, None], # "[0, 5000]",
+		"MTT_source_min_max": [None, None],
+		"rCBF_source_min_max": [None, None],
+		"rCBV_source_min_max": [None, None],
+		"Tmax_source_min_max": [None, None],
+		"TTP_source_min_max": [None, None],
 		
-		"ADC_target_min_max": "[0, 1]",
-		"MTT_target_min_max": "[0, 1]",
-		"rCBF_target_min_max": "[0, 1]",
-		"rCBV_target_min_max": "[0, 1]",
-		"Tmax_target_min_max": "[0, 1]",
-		"TTP_target_min_max": "[0, 1]",
+		"ADC_target_min_max": [0,1],
+		"MTT_target_min_max": [0,1],
+		"rCBF_target_min_max": [0,1],
+		"rCBV_target_min_max": [0,1],
+		"Tmax_target_min_max": [0,1],
+		"TTP_target_min_max": [0,1],
 	},
 	'augmentation': {
 		'type': 'no_augmentation',
-		'number_of_data_augmented_per_case': '10',
+		'number_of_data_augmented_per_case': 10,
+	},
+	'misc': {
+		'case_number':1
 	}
 }
-'''
-'debug_test_mode'. To see what modes are available, see tests/test.py
-'''
 
-def prepare_config(config_raw_data):
-	config_data = {}
-	config_data['working_dir'] = config_raw_data['working_dir']
-	config_data['dir_ISLES2017'] = config_raw_data['dir_ISLES2017']
-	config_data['relative_checkpoint_dir'] = config_raw_data['relative_checkpoint_dir']
-	config_data['model_label_name'] = config_raw_data['model_label_name']
-	config_data['training_mode'] = config_raw_data['training_mode']
-	config_data['evaluation_mode'] = config_raw_data['evaluation_mode']
-	config_data['debug_test_mode'] = config_raw_data['debug_test_mode']
+class ConfigManager(object):
 
-	config_data['basic_1'] = {}
-	config_data['basic_1']['batch_size'] = int(config_raw_data['basic_1']['batch_size'])
-	config_data['basic_1']['n_epoch'] = int(config_raw_data['basic_1']['n_epoch'])
-	config_data['basic_1']['save_model_every_N_epoch'] = int(config_raw_data['basic_1']['save_model_every_N_epoch'])
-
-	config_data['dataloader'] = {}
-	config_data['dataloader']['resize'] = sanitize_json_strings(config_raw_data['dataloader']['resize'], mode='one_level_list', submode='output_numpy_int_array', verbose=0)
-
-	learning = {}
-	learning['mechanism'] = config_raw_data['learning']['mechanism']
-	learning['momentum'] = float(config_raw_data['learning']['momentum'])
-	learning['learning_rate'] = float(config_raw_data['learning']['learning_rate'])
-	learning['weight_decay'] = float(config_raw_data['learning']['weight_decay'])
-	learning['betas'] = sanitize_json_strings(config_raw_data['learning']['betas'], mode='one_level_list', submode='output_numpy_float_array', verbose=0)
-	config_data['learning'] = learning
-
-	normalization = {}
-	modalities_label = ['ADC','MTT','rCBF','rCBV' ,'Tmax','TTP']
-	for mod in modalities_label:
-		normalization[mod + '_source_min_max'] = sanitize_json_strings(config_raw_data['normalization'][mod + '_source_min_max'], mode='one_level_list', submode='output_numpy_float_array', verbose=0)
-		normalization[mod + '_target_min_max'] = sanitize_json_strings(config_raw_data['normalization'][mod + '_target_min_max'], mode='one_level_list', submode='output_numpy_float_array', verbose=0)
-	config_data['normalization'] = normalization
-
-	augmentation = {}
-	augmentation['type'] = config_raw_data['augmentation']['type']
-	augmentation['number_of_data_augmented_per_case'] = int(config_raw_data['augmentation']['number_of_data_augmented_per_case'])
-	config_data['augmentation'] = augmentation
-	return config_data
-
-def json_to_dict(json_dir):
-	f = open(json_dir)
-	fr = f.read()
-	data = json.loads(fr)
-	f.close()
-	return data
-
-def clear_square_brackets(x):
-	while True:
-		if x.find('[') >=0:
-			x = x[1:]
-		if x.find(']') >=0:
-			x = x[:-1]
-		if x.find('[') >=0 or x.find(']') >=0:
-			pass
-		else:
-			break
-	return x
-
-def clear_white_spaces_string_front_back(x):
-	while True:
-		if x[0]==' ': x = x[1:]
-		else: break
-	x = x[::-1]
-	while True:
-		if x[0]==' ': x = x[1:]
-		else: break
-	return x[::-1]
-
-def repeat_split(this_string, delimiter):
-	out = []
-	while this_string.find(delimiter) > -1:
-		temp = this_string.find(delimiter)
-		out.append(this_string[:temp])
-		this_string = this_string[temp+1:]
-	out.append(this_string)
-	return out
-
-def sanitize_json_strings(x, mode='one_level_list', submode='output_numpy_float_array', verbose=0):
-	"""
-	Sanitizing strings, intended for json argument extraction.
-	See usage example in each mode
-	"""
-	if verbose > 9: print("sanitize_json_strings().")
-	if mode == 'one_level_list':
-		"""
-		Example usage:
-		x = '[12, 42]'
-		x1 = '[ 12, 42]'
-		x2 = '[12  , 42   ]'
-
-		for xx in [x, x1, x2]:
-			out = sanitize_json_strings(x, verbose = 0)
-			print("  ",out)
-		"""
-		x1 = repeat_split(x, ',')
-		if verbose > 199: print("  ",x1)
-		temp = []
-		for y in x1:
-			if verbose > 199: print("  ", clear_square_brackets(y))
-			temp.append(clear_square_brackets(y))
+	def __init__(self):
+		super(ConfigManager, self).__init__()
 		
-		return_None = False
-		for i,y in enumerate(temp): 
-			if clear_white_spaces_string_front_back(y) == "None": temp[i] = None; return_None = True
-		if return_None: return temp
+	def create_config_file(self,config_dir):
+		print("utils/utils.py. create_config_file()")
 
-		if submode =='output_numpy_float_array': out = np.array([float(y) for y in temp])
-		elif submode =='output_numpy_int_array': out = np.array([int(y) for y in temp])
-		elif submode =='output_tuple_int': out = tuple([int(y) for y in temp])
-		elif submode is None: out = [clear_white_spaces_string_front_back(x) for x in temp]
-		return out
-	if mode == 'two_level_list':
-		"""
-		x = '[[12, 42]; [88, 77]]'
-		x1 = '[     [  12  , 42]; [  88,   77]]'
-		x2 = '[[12, 42]     ;[88,77];[1224,12321, 999]]'
+		temp_dir = "temp.json"
+		with open(temp_dir, 'w') as json_file:  
+			json.dump(CONFIG_FILE, json_file, separators=(',',":"), indent=2) # (',', ':')
 
-		for xx in [x, x1, x2]:
-			out = sanitize_json_strings(xx, mode='two_level_list', submode='output_numpy_float_array', verbose = 200)
-			print("  out:", out)
-			print("  ",out.shape)
-		"""
-		x1 = repeat_split(x, ';')
-		if verbose > 199: print("  x1:", x1)
-		temp = []
-		for y in x1:
-			if verbose > 199: print("  ", sanitize_json_strings(clear_square_brackets(y), mode='one_level_list', submode=None))
-			temp.append(sanitize_json_strings(clear_square_brackets(y), mode='one_level_list', submode=None))
-		if submode =='output_numpy_float_array': 
-			out = []
-			for y in temp: out.append(np.array(y, dtype=np.float))
-			out = np.array(out)
-		elif submode =='output_numpy_int_array': 
-			out = []
-			for y in temp: out.append(np.array(y, dtype=np.int))
-			out = np.array(out)
-		elif submode =='output_tuple_int':
-			out = []
-			for y in temp: out.append(tuple(np.array(y, dtype=np.int)))
-			# out = np.array(out)
-		elif submode is None: out = temp
-		return out
-	return
+		self.json_beautify(temp_dir, config_dir)
+		print("  Config file created.")
 
-def printing_config(config_data):
-	for x in config_data:
-		if not isinstance(config_data[x],dict) :
-			print("  %s : %s [%s]"%(x, config_data[x],type(config_data[x])))
-		else:
-			print("  %s :"%(x))
-			for y in config_data[x]:
-				print("    %s : %s [%s]"%(y, config_data[x][y], type(config_data[x][y])))
+	def json_file_to_pyobj(self,filename):
+	    def _json_object_hook(d): return collections.namedtuple('ConfigX', d.keys())(*d.values())
+	    def json2obj(data): return json.loads(data, object_hook=_json_object_hook)
+	    return json2obj(open(filename).read())
+
+	def json_file_to_pyobj_recursive_print(self,config_data, name='config_data', verbose=0):
+		for field_name in config_data._fields:
+			temp = getattr(config_data,field_name)
+			if 'ConfigX' in str(type(temp)) : self.json_file_to_pyobj_recursive_print(temp, name+'.'+field_name)
+			else: 
+				print("  %s.%s: %s [%s]"%(name,field_name, str(temp), str(type(temp))))
+				if isinstance(temp,list) and verbose>9: 
+					for x in temp: print("      [%s]"%(type(x)),end='')
+					print()
+				
+	def json_beautify(self,temp_dir, config_dir):
+		bracket = 0	
+		with open(config_dir, 'w') as json_file: 
+			for x in open(temp_dir, 'r'):
+				temp = x.strip("\n").strip("\t")
+				prev_bracket = bracket
+				if "]" in temp: bracket-=1 
+				if "[" in temp: bracket+=1
+				if bracket ==0 and not prev_bracket==1: print(temp); json_file.write(temp+"\n")
+				elif bracket ==0 and prev_bracket==1: print(temp.strip(" ")); json_file.write(temp.strip(" ")+"\n")
+				elif bracket==1 and prev_bracket==0: print(temp,end=''); json_file.write(temp)
+				else: print(temp.strip(" "),end='') ; json_file.write(temp.strip(" "))
+		os.remove(temp_dir)
+
+	def recursive_namedtuple_to_dict(self, config_data):
+		config_data = config_data._asdict()
+		for xkey in config_data:
+			if 'ConfigX' in str(type(config_data[xkey])) :
+				config_data[xkey] = config_data[xkey]._asdict()
+		return config_data
+
 
 def read_csv(filename, header_skip=1,get_the_first_N_rows = 0):
     # filename : string, name of csv file without extension
@@ -289,8 +229,12 @@ def read_csv(filename, header_skip=1,get_the_first_N_rows = 0):
     return out
 
 def normalize_numpy_array(x,target_min=-1,target_max=1, source_min=None, source_max=None, verbose = 250):
+	'''
+	If target_min or target_max is set to None, then no normalization is performed
+	'''
 	if source_min is None: source_min = np.min(x)
 	if source_max is None: source_max = np.max(x)
+	if target_min is None or target_max is None: return x
 	if source_min==source_max:
 		if verbose> 249 : print("normalize_numpy_array: constant array, return unmodified input")
 		return x
@@ -344,3 +288,57 @@ def batch_no_channel_interp3d(x,size,mode='nearest'):
 	for i in range(s[0]):
 		out[i,:,:,:] = interp3d(x[i,:,:,:],size, mode=mode)
 	return out
+
+def get_zero_container(x,y):
+	"""
+	Assume x, y are tensors of the same dimension
+	but not necessarily have the same size
+	for example x can be 3,4,5 and y 4,3,5
+	return the size that can contain both: 4,4,5
+	
+	Example:
+	x = torch.tensor(np.random.normal(0,1,size=(3,4,5)))
+	y = torch.tensor(np.random.normal(0,1,size=(4,3,5)))
+	z = get_zero_container(x,y)
+	print(z.shape) # torch.Size([4, 4, 5])
+	"""
+	s = []
+	for sx,sy in zip(x.shape,y.shape):
+		s.append(np.max([sx,sy]))
+	return torch.zeros(s)
+
+
+def centre_crop_tensor(x, intended_shape):
+	"""
+	Assume x is pytorch tensor
+	Given tensor x of shape (4,6), if we want to extract
+	  its center of size (4,4), then set intended_shape=(4,4)
+	Any dimension of x works.
+	Example:
+		x = torch.tensor(np.random.randint(0,10,size=(4,6)))
+		x1 = centre_crop_tensor(x, (4,4))
+		print(x)
+		print(x1)
+	Example 2:
+	for i in range(1000):
+		randomsize = np.random.randint(50,100,size=(1,2))[0]
+		randomcropsize = np.random.randint(10,48,size=(1,2))[0]
+		x = torch.tensor(np.random.randint(0,10,size=randomsize))
+		x1 = centre_crop_tensor(x, randomcropsize)
+		print("%s|| %s == %s"%(str(randomsize),str(randomcropsize),str(np.array(x1.shape))))
+
+	"""
+	limits = []
+	for s,s1 in zip(x.shape,intended_shape):
+		if s == s1: 
+			limits.append(slice(0,s,None))
+		else:
+			diff1 = np.floor(np.abs(s-s1)/2)
+			diff2 = np.ceil(np.abs(s-s1)/2)
+			limits.append(slice(int(diff1),int(s-diff2),None))
+	limits = tuple(limits)
+	x1 = x[limits]
+	# print(np.array(x1.shape),intended_shape)
+	assert(np.all(np.array(x1.shape)==intended_shape))
+	return x1
+

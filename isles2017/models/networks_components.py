@@ -1,44 +1,76 @@
 from utils.utils import *
+import models.networks_LRP as lr
 
-DEBUG_COMPONENT = 0
+# DEBUG_networks_components_COMPONENT = 0
 
 class ConvBlocksUNet(nn.Module):
 	"""docstring for ConvBlocksUNet"""
-	def __init__(self, label, batch_norm):
+	def __init__(self, label, batch_norm, with_LRP=False, is_the_first_block=False):
 		super(ConvBlocksUNet, self).__init__()
 		# self.this_device = device
 		self.label = label
 		self.batch_norm = batch_norm
+		self.with_LRP = with_LRP
+		self.is_the_first_block = is_the_first_block
+		self.relprop_max_min = None # typically [0,1]
 	
 	def conv_three_blocks(self, in_channels, out_channels, kernel_sizes, paddings, strides, dilations):
 		'''
 		we label by the "levels" starting from 1. After each maxpool, level increases by 1.
 		The original paper https://arxiv.org/abs/1606.06650 has 3 blocks at each level before devonolution
-		and have 4 levels. THen it is followed by 3 levels of devonolution layers with concatenation.
+		and have 4 levels. THen it is followed by 3 levels of deconvolution layers with concatenation.
 		'''
 		for i, param in enumerate(zip(in_channels, out_channels, kernel_sizes, paddings, strides, dilations)):
-			conv, convbn = self.convblock(param[0], param[1], param[2], padding=param[3], stride=param[4], dilation=param[5])
+			if i == 0 and self.is_the_first_block: 
+				conv, convbn = self.convblock(param[0], param[1], param[2], padding=param[3], stride=param[4], 
+					dilation=param[5], is_the_first_layer=True)
+			else: 
+				conv, convbn = self.convblock(param[0], param[1], param[2], padding=param[3], stride=param[4], dilation=param[5])	
 			setattr(self, 'conv_'+ str(self.label) + "_" +str(i), conv)
 			if self.batch_norm: setattr(self, 'bn3d_'+ str(self.label)+ "_"  +str(i), convbn)	
-			setattr(self, 'act_'+str(self.label)+"_"+str(i), nn.LeakyReLU(0.2, inplace=True))
+			setattr(self, 'act_'+str(self.label)+"_"+str(i), lr.LeakyReLU_LRP(0.2, inplace=True))
 		return
 
-	def convblock(self, in_channel, out_channel, kernel_size, padding=0, stride=1, dilation=1, batch_norm=True):
-		conv = nn.Conv3d(in_channel, out_channel, kernel_size, padding=padding, stride=stride, dilation=dilation)#.to(device=self.this_device)  
-		if self.batch_norm: convbn = nn.BatchNorm3d(out_channel)##.to(device=self.this_device)
-		else: convbn = None
+	def convblock(self, in_channel, out_channel, kernel_size, padding=0, stride=1, dilation=1, batch_norm=True, is_the_first_layer=False):
+		if not self.with_LRP:
+			conv = nn.Conv3d(in_channel, out_channel, kernel_size, padding=padding, stride=stride, dilation=dilation)#.to(device=self.this_device)  
+			if self.batch_norm: convbn = nn.BatchNorm3d(out_channel)##.to(device=self.this_device)
+			else: convbn = None
+		else:
+			conv = lr.Conv3dLRP(in_channel, out_channel, kernel_size, padding=padding, stride=stride, dilation=dilation)#.to(device=self.this_device)  
+			if self.batch_norm: convbn = lr.BatchNorm3dLRP(out_channel)##.to(device=self.this_device)
+			else: convbn = None
+			if is_the_first_layer:
+				conv.not_first_layer = False
+				conv.relprop_max_min = self.relprop_max_min
 		return conv, convbn
 
 	def forward(self, x):
-		if DEBUG_COMPONENT: print("  Components: ConvBlocksUNet()")
+		if DEBUG_networks_components_COMPONENT: print("  Components: ConvBlocksUNet()")
+		if self.with_LRP: self.X = x
 		for i in range(2):	
 			x = getattr(self,'conv_'+ str(self.label) + "_"+ str(i))(x)
 			if self.batch_norm: x = getattr(self,'bn3d_'+ str(self.label) + "_" + str(i))(x)
 			x = getattr(self, 'act_'+str(self.label)+"_"+str(i))(x)
 			# x = F.relu(x)
 
-			if DEBUG_COMPONENT: print("    x.shape:%s"%(str(x.shape)))
+			if DEBUG_networks_components_COMPONENT: print("    x.shape:%s"%(str(x.shape)))
 		return x
+
+	def relprop(self,R, verbose=0):
+		if verbose>99: 			
+			print("  ConvBlocksUNet. relprop().")
+			ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5
+			print("    sqr sum=%s np.max(R)=%s, np.min(R)=%s"%(str(ss),str(np.max(R.detach().cpu().numpy())),str(np.min(R.detach().cpu().numpy()))))
+
+		for i in range(2)[::-1]:	
+			R = getattr(self, 'act_'+str(self.label)+"_"+str(i)).relprop(R)
+			if self.batch_norm: R = getattr(self,'bn3d_'+ str(self.label) + "_" + str(i)).relprop(R)
+			R = getattr(self,'conv_'+ str(self.label) + "_"+ str(i)).relprop(R,verbose=verbose)
+			if verbose>99: 
+				ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5
+				print("    sqr sum=%s np.max(R)=%s, np.min(R)=%s"%(str(ss),str(np.max(R.detach().cpu().numpy())),str(np.min(R.detach().cpu().numpy()))))
+		return R
 
 class ConvBlocks(nn.Module):
 	""" ConvBlocks"""
@@ -142,15 +174,18 @@ class ModulePlus(nn.Module):
 			txt.write("\n")
 		txt.close()
 
-	def write_diary_post_epoch(self, config_data):
+	def write_diary_post_epoch(self, config_data, no_of_data_processed=None):
 		diary_dir = os.path.join(config_data['working_dir'], config_data['relative_checkpoint_dir'],config_data['model_label_name'])
 		diary_full_path = os.path.join(diary_dir,'diary.txt')
 		diary_mode = 'a' 
 		txt = open(diary_full_path,diary_mode)
 		txt.write("  epoch %s time taken: %s [s] %s [min]\n"%(str(self.latest_epoch),str(self.elapsed), str(self.elapsed/60.)))
+		if no_of_data_processed is not None: 
+			txt.write("    >> no. of data processed in this epoch: %s\n"%(str(no_of_data_processed)))
 		txt.close()
-		print("  epoch %s time taken: %s [s] %s [min]"%(str(self.latest_epoch),str(self.elapsed), str(self.elapsed/60.)))
-
+		print("  epoch %s time taken: %s [s] %s [min]"%(str(self.latest_epoch),str(round(self.elapsed,2)), str(round(self.elapsed/60.,3))))
+		if no_of_data_processed is not None:
+			print("    >> no. of data processed in this epoch: %s"%(str(no_of_data_processed)))
 	def start_timer(self):
 		self.start = time.time()
 	
@@ -163,9 +198,9 @@ class ModulePlus(nn.Module):
 		main_model_fullpath = os.path.join(model_dir,config_data['model_label_name'] + '.model') 
 		artifact_fullpath = os.path.join(model_dir,config_data['model_label_name'] + '.' + str(self.latest_epoch) + '.model')
 
-		checker = self.latest_epoch % config_data['basic_1']['save_model_every_N_epoch']	
+		checker = self.latest_epoch % config_data['basic']['save_model_every_N_epoch']	
 		if checker == 0:
-			print("    save_models(). epoch_to_save=%s"%(str(self.latest_epoch)))
+			# print("    save_models(). epoch_to_save=%s"%(str(self.latest_epoch)))
 			self.saved_epochs.append(self.latest_epoch)
 			torch.save(self.state_dict(), artifact_fullpath)
 			# output = open(artifact_fullpath, 'wb')
@@ -177,6 +212,28 @@ class ModulePlus(nn.Module):
 		output2 = open(main_model_fullpath, 'wb')
 		pickle.dump(model, output2)
 		output2.close()
+
+	def clear_up_models(self,model,config_data, keep_at_most_n_latest_models=None):
+		if keep_at_most_n_latest_models is None: return
+		# print("clear_up_models()")
+		count = 0
+		this_epoch = model.latest_epoch
+		delete_the_rest = False
+		model_dir = os.path.join(config_data['working_dir'], config_data['relative_checkpoint_dir'],config_data['model_label_name'])
+		
+		while this_epoch >=0:
+			artifact_fullpath = os.path.join(model_dir,config_data['model_label_name'] + '.' + str(this_epoch) + '.model')
+			this_epoch -= 1
+			if os.path.exists(artifact_fullpath):
+				if not delete_the_rest:
+					count+=1
+					# print("keep %s"%(artifact_fullpath))
+					if count == keep_at_most_n_latest_models: delete_the_rest = True
+				else:
+					os.remove(artifact_fullpath)
+					# print("Cleaning :%s"%(artifact_fullpath))
+
+
 
 	def load_state(self, config_data):
 		model_dir = os.path.join(config_data['working_dir'], config_data['relative_checkpoint_dir'],config_data['model_label_name'])

@@ -1,18 +1,273 @@
 from models.networks_components import * 
 from models.networks_components2 import * 
+import models.networks_LRP as lr
 
-FCN8like_DEBUG = 0
-UNet3D_DEBUG = 0
-PSPNet_DEBUG = 0
-segnet_DEBUG = 0
+# UNet3D_DEBUG = 1
 
-FCN_DEBUG = 0 # testing only
+class UNet3D(ModulePlus):
+	def __init__(self, no_of_input_channel=6, with_LRP=False):
+		super(UNet3D, self).__init__()
+		batch_norm = True
+		self.first_layer_normalization = [0,1]
+		self.no_of_input_channel = no_of_input_channel
+		self.with_LRP = with_LRP
+		
+		label = 1
+		if not UNet3D_DEBUG:
+			
+			cb1 = [[self.no_of_input_channel,32],[32,64],[3,3],[1,1],[1,1],[1,1]]; 
+			cb2 = [[64,64],[64,128],[3,3],[1,1],[1,1],[1,1]]
+			cb3 = [[128,128],[128,256],[3,3],[1,1],[1,1],[1,1]]
+			cb4 = [[256,256],[256,512],[3,3],[1,1],[1,1],[1,1]]
+			
+			dc1 = [512,512,2]
+			cb5 = [[256+512,256],[256,256],[3,3],[1,1],[1,1],[1,1]]
+			dc2 = [256,256,2]
+			cb6 = [[128+256,128],[128,128],[3,3],[1,1],[1,1],[1,1]]
+			dc3 = [128,128,2]
+			cb7 = [[64+128,64],[64,64],[3,3],[1,1],[1,1],[1,1]]
+			cf = [64]
+						
+		else:
+			cb1 = [[self.no_of_input_channel,3],[3,4],[3,3],[1,1],[1,1],[1,1]]
+			cb2 = [[4,4],[4,6],[3,3],[1,1],[1,1],[1,1]]
+			cb3 = [[6,6],[6,8],[3,3],[1,1],[1,1],[1,1]]
+			cb4 = [[8,8],[8,16],[3,3],[1,1],[1,1],[1,1]]
+
+			dc1 = [16,16, 2]
+			cb5 = [[8+16,8],[8,8],[3,3],[1,1],[1,1],[1,1]]
+			dc2 = [8,8, 2]
+			cb6 = [[6+8,6],[6,6],[3,3],[1,1],[1,1],[1,1]]
+			dc3 = [6,6, 2]
+			cb7 = [[4+6,4],[4,4],[3,3],[1,1],[1,1],[1,1]]
+			cf = [4]
+			
+		self.cblocks1 = ConvBlocksUNet(label, batch_norm, with_LRP=self.with_LRP, is_the_first_block=True)
+		self.cblocks1.relprop_max_min = self.first_layer_normalization
+		self.cblocks1.conv_three_blocks(cb1[0],cb1[1],cb1[2], cb1[3],cb1[4],cb1[5],)
+		self.pool1 = lr.MaxPool3dLRP(2, stride=2, ceil_mode=True)#.to(device=device)
+
+		self.cblocks2 = ConvBlocksUNet(2, batch_norm, with_LRP=self.with_LRP)
+		self.cblocks2.conv_three_blocks(cb2[0],cb2[1],cb2[2], cb2[3],cb2[4],cb2[5],)
+		self.pool2 = lr.MaxPool3dLRP(2, stride=2, ceil_mode=True)#.to(device=device)
+
+		self.cblocks3 = ConvBlocksUNet(3, batch_norm, with_LRP=self.with_LRP)
+		self.cblocks3.conv_three_blocks(cb3[0],cb3[1],cb3[2], cb3[3],cb3[4],cb3[5],)
+		self.pool3 = lr.MaxPool3dLRP(2, stride=2, ceil_mode=True)#.to(device=device)
+
+		self.cblocks4 = ConvBlocksUNet(4, batch_norm, with_LRP=self.with_LRP)
+		self.cblocks4.conv_three_blocks(cb4[0],cb4[1],cb4[2], cb4[3],cb4[4],cb4[5],)
+		self.deconv1 = lr.ConvTranspose3dLRP(dc1[0],dc1[1], dc1[2], stride=2, bias=False)#.to(device=device)
+
+		# RHS of the U shape
+		self.cblocks5 = ConvBlocksUNet('3b', batch_norm, with_LRP=self.with_LRP)
+		self.cblocks5.conv_three_blocks(cb5[0],cb5[1],cb5[2], cb5[3],cb5[4],cb5[5],)
+		self.deconv2 = lr.ConvTranspose3dLRP(dc2[0], dc2[1], dc2[2], stride=2, bias=False)#.to(device=device)
+		self.cblocks6 = ConvBlocksUNet('2b', batch_norm, with_LRP=self.with_LRP)
+		self.cblocks6.conv_three_blocks(cb6[0],cb6[1],cb6[2], cb6[3],cb6[4],cb6[5],)
+		self.deconv3 = lr.ConvTranspose3dLRP(dc3[0], dc3[1], dc3[2], stride=2, bias=False)#.to(device=device)
+		self.cblocks7 = ConvBlocksUNet('1b', batch_norm, with_LRP=self.with_LRP)
+		self.cblocks7.conv_three_blocks(cb7[0],cb7[1],cb7[2], cb7[3],cb7[4],cb7[5],)
+
+		self.convf = lr.Conv3dLRP(cf[0], number_of_classes, 1, padding=0, stride=1, dilation=1)#.to(device=device)  
+		self.bn = lr.BatchNorm3dLRP(number_of_classes)
+		self.final_relu = lr.ReLU_LRP()
+
+		for x in self.modules(): x = torch.nn.DataParallel(x, device_ids=range(torch.cuda.device_count()))
+		self._init_weight()
+
+		self.paramdict = { 
+			'cb1': cb1, 'cb2': cb2, 'cb3': cb3, 'cb4': cb4, 'dc1': dc1,
+			'cb5':cb5, 'dc2':dc2, 'cb6':cb6, 'dc3':dc3, 'cb7':cb7,
+			'cf':cf,
+			}
+		# for x in self.paramdict:
+		# 	print("    %s: %s"%(str(x),str(self.paramdict[x])))
+
+	def forward(self, x):
+		x = self.cblocks1(x)
+		h1 = torch.Tensor(np.zeros(shape=(x.shape)))
+		h1.data = x.clone()
+		x = self.pool1(x)
+		x = self.cblocks2(x)
+		h2 = torch.Tensor(np.zeros(shape=(x.shape)))
+		h2.data = x.clone()
+		x = self.pool2(x)
+		x = self.cblocks3(x)
+		h3 = torch.Tensor(np.zeros(shape=(x.shape)))
+		h3.data = x.clone()
+		x = self.pool3(x)
+		x = self.cblocks4(x)
+		x = self.deconv1(x)[:,:,:-1,:,:] # the index is for "negative padding"
+
+		x = torch.cat((h3,x),dim=1)	
+		x = self.cblocks5(x)
+		x = self.deconv2(x)
+		x = torch.cat((h2,x),dim=1)	
+		x = self.cblocks6(x)
+		x = self.deconv3(x)[:,:,:-1,:,:] # the index is for "negative padding"
+		x = torch.cat((h1,x),dim=1)
+		x = self.cblocks7(x)
+
+		x = self.convf(x)
+		x = self.bn(x)
+		x = self.final_relu(x) # F.relu(x)
+		return x
+
+	def forward_debug(self, x):
+		print("UNet3D. forward_debug()")
+		print("  [-1] x.shape:%s"%(str(x.shape)))
+		x = self.cblocks1(x)
+		h1 = torch.Tensor(np.zeros(shape=(x.shape)))
+		h1.data = x.clone()
+		print("  [0] x.shape:%s, h1.shape:%s"%(str(x.shape), str(h1.shape)))
+		x = self.pool1(x)
+
+		x = self.cblocks2(x)
+		h2 = torch.Tensor(np.zeros(shape=(x.shape)))
+		h2.data = x.clone()
+		print("  [1] x.shape:%s, h2.shape:%s"%(str(x.shape), str(h2.shape)))
+		x = self.pool2(x)
+
+		x = self.cblocks3(x)
+		h3 = torch.Tensor(np.zeros(shape=(x.shape)))
+		h3.data = x.clone()
+		print("  [2] x.shape:%s, h3.shape:%s"%(str(x.shape), str(h3.shape)))
+		x = self.pool3(x)
+
+		x = self.cblocks4(x)
+		print("  [3] x.shape:%s"%(str(x.shape)))
+
+		x = self.deconv1(x)[:,:,:-1,:,:] # the index is for "negative padding"
+		print("  [4] x.shape:%s (3D shape must be the same as [2])"%(str(x.shape)))
+		x = torch.cat((h3,x),dim=1)
+		print("    [4b] x.shape:%s (after concat)"%(str(x.shape)))
+		
+		x = self.cblocks5(x)
+		x = self.deconv2(x)
+		print("  [5] x.shape:%s (3D shape must be the same as [1])"%(str(x.shape)))
+		x = torch.cat((h2,x),dim=1)
+		print("    [5b] x.shape:%s (after concat)"%(str(x.shape)))
+		
+		x = self.cblocks6(x)
+		x = self.deconv3(x)[:,:,:-1,:,:] # the index is for "negative padding"
+		print("  [6] x.shape:%s (3D shape must be the same as [0])"%(str(x.shape)))
+		x = torch.cat((h1,x),dim=1)
+		print("    [6b] x.shape:%s (after concat)"%(str(x.shape)))
+
+		x = self.cblocks7(x)
+		print("  [7] x.shape:%s"%(str(x.shape)))
+
+		x = self.convf(x)
+		x = self.bn(x)
+		x = self.final_relu(x) # F.relu(x)
+		print("  output shape:%s"%(str(x.shape)))
+		return x
+
+	def relprop(self,R):
+		R = self.final_relu.relprop(R); ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		R = self.bn.relprop(R)
+		R = self.convf.relprop(R); ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		
+		R = self.cblocks7.relprop(R)
+		R = R[:,self.paramdict['cb1'][1][1]:,:,:,:] ; ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		R = self.deconv3.relprop(R); ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		
+		R = self.cblocks6.relprop(R)
+		R = R[:,self.paramdict['cb2'][1][1]:]; ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		R = self.deconv2.relprop(R) ; ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		
+		R = self.cblocks5.relprop(R)
+		R = R[:,self.paramdict['cb3'][1][1]:]; ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		R = self.deconv1.relprop(R) ; ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		
+		R = self.cblocks4.relprop(R); ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		R = self.pool3.relprop(R)
+		
+		R = self.cblocks3.relprop(R,verbose=0); ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		R = self.pool2.relprop(R)
+		
+		R = self.cblocks2.relprop(R); ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		R = self.pool1.relprop(R)
+		
+		R = self.cblocks1.relprop(R); ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		return R	
+
+	def relprop_debug(self, R):
+		"""
+		center_crop is the shape of R to output, assuming that
+		  the shape of R is initially larger than the intended shape
+		"""
+		print("[-1]  np.max(R)=%s, np.min(R)=%s"%(str(np.max(R.detach().cpu().numpy())),str(np.min(R.detach().cpu().numpy()))))
+		
+
+		R = self.final_relu.relprop(R); ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		print("[0]  sqr sum=%s np.max(R)=%s, np.min(R)=%s"%(str(ss),str(np.max(R.detach().cpu().numpy())),str(np.min(R.detach().cpu().numpy()))))
+		R = self.bn.relprop(R)
+		print("[0.1]  sqr sum=%s np.max(R)=%s, np.min(R)=%s"%(str(ss),str(np.max(R.detach().cpu().numpy())),str(np.min(R.detach().cpu().numpy()))))
+		R = self.convf.relprop(R); ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		print("[0.2]  sqr sum=%s np.max(R)=%s, np.min(R)=%s"%(str(ss),str(np.max(R.detach().cpu().numpy())),str(np.min(R.detach().cpu().numpy()))))
+
+		R = self.cblocks7.relprop(R) 
+		print("[1] R.shape:%s"%(str(R.shape)))
+		print("    np.max(R)=%s, np.min(R)=%s"%(str(np.max(R.detach().cpu().numpy())),str(np.min(R.detach().cpu().numpy()))))
+		R = R[:,self.paramdict['cb1'][1][1]:,:,:,:] ; ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		print("[1.1] R.shape:%s"%(str(R.shape)))
+		print("  sqr sum=%s np.max(R)=%s, np.min(R)=%s"%(str(ss),str(np.max(R.detach().cpu().numpy())),str(np.min(R.detach().cpu().numpy()))))
+		R = self.deconv3.relprop(R); ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		print("[1.2] R.shape:%s"%(str(R.shape)))
+		print("  sqr sum=%s np.max(R)=%s, np.min(R)=%s"%(str(ss),str(np.max(R.detach().cpu().numpy())),str(np.min(R.detach().cpu().numpy()))))
+
+		R = self.cblocks6.relprop(R) ; 
+		print("[2] R.shape:%s"%(str(R.shape)))
+		R = R[:,self.paramdict['cb2'][1][1]:]; ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		print("[2.1] R.shape:%s"%(str(R.shape)))
+		R = self.deconv2.relprop(R) ; ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		print("[2.2] R.shape:%s"%(str(R.shape)))
+		print("  sqr sum=%s np.max(R)=%s, np.min(R)=%s"%(str(ss),str(np.max(R.detach().cpu().numpy())),str(np.min(R.detach().cpu().numpy()))))
+
+		R = self.cblocks5.relprop(R)
+		print("[3] R.shape:%s"%(str(R.shape)))
+		R = R[:,self.paramdict['cb3'][1][1]:]; ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		print("[3.1] R.shape:%s"%(str(R.shape)))
+		R = self.deconv1.relprop(R) ; ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		print("[3.2] R.shape:%s"%(str(R.shape)))
+		print("  sqr sum=%s np.max(R)=%s, np.min(R)=%s"%(str(ss),str(np.max(R.detach().cpu().numpy())),str(np.min(R.detach().cpu().numpy()))))
+
+
+		R = self.cblocks4.relprop(R); ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		print("[4] R.shape:%s"%(str(R.shape)))
+		R = self.pool3.relprop(R)
+		print("[4.1] R.shape:%s"%(str(R.shape)))
+		print("  sqr sum=%s np.max(R)=%s, np.min(R)=%s"%(str(ss),str(np.max(R.detach().cpu().numpy())),str(np.min(R.detach().cpu().numpy()))))
+
+		R = self.cblocks3.relprop(R,verbose=0); ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		print("[5] R.shape:%s"%(str(R.shape)))
+		print("  sqr sum=%s np.max(R)=%s, np.min(R)=%s"%(str(ss),str(np.max(R.detach().cpu().numpy())),str(np.min(R.detach().cpu().numpy()))))
+		R = self.pool2.relprop(R)
+		print("[5.1] R.shape:%s"%(str(R.shape)))
+		print("  sqr sum=%s np.max(R)=%s, np.min(R)=%s"%(str(ss),str(np.max(R.detach().cpu().numpy())),str(np.min(R.detach().cpu().numpy()))))
+		
+		R = self.cblocks2.relprop(R); ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		print("[6] R.shape:%s"%(str(R.shape)))
+		R = self.pool1.relprop(R)
+		print("[6.1] R.shape:%s"%(str(R.shape)))
+		print("  sqr sum=%s np.max(R)=%s, np.min(R)=%s"%(str(ss),str(np.max(R.detach().cpu().numpy())),str(np.min(R.detach().cpu().numpy()))))
+		
+		R = self.cblocks1.relprop(R); ss = sum((R.view(-1).detach().cpu().numpy())**2)**0.5; R = R/ss
+		print("[7] R.shape:%s"%(str(R.shape)))
+		print("  sqr sum=%s np.max(R)=%s, np.min(R)=%s"%(str(ss),str(np.max(R.detach().cpu().numpy())),str(np.min(R.detach().cpu().numpy()))))
+		return R
+
+
+'''
+Under construction [XABC]
 
 class segnet(ModulePlus):
-	'''
+	"""
 	Code adapted from https://github.com/meetshah1995/pytorch-semseg/blob/master/ptsemseg/models/segnet.py
 	original paper: https://arxiv.org/abs/1511.00561
-	'''
+	"""
 	def __init__(self):
 		super(segnet, self).__init__()
 
@@ -78,10 +333,10 @@ class segnet(ModulePlus):
 		return up1
 
 class PSPNet(ModulePlus):
-	'''
+	"""
 	Code adapted from https://github.com/meetshah1995/pytorch-semseg/blob/master/ptsemseg/models/utils.py
 	Original paper: https://arxiv.org/abs/1612.01105
-	'''
+	"""
 	def __init__(self):
 		super(PSPNet, self).__init__()
 
@@ -199,147 +454,6 @@ class PSPNet(ModulePlus):
 		else:  # eval mode
 			return x
 
-class UNet3D(ModulePlus):
-	def __init__(self):
-		super(UNet3D, self).__init__()
-		batch_norm = True
-		input_channel = 6
-		if not UNet3D_DEBUG:
-			label = 1
-			self.cblocks1 = ConvBlocksUNet(label, batch_norm, )
-			# in_channels, out_channels, kernel_sizes, paddings, strides, dilations
-			self.cblocks1.conv_three_blocks([input_channel,32],[32,64],[3,3],[1,1],[1,1],[1,1])
-			self.cblocks2 = ConvBlocksUNet(2, batch_norm, )
-			self.cblocks2.conv_three_blocks([64,64],[64,128],[3,3],[1,1],[1,1],[1,1])
-			self.cblocks3 = ConvBlocksUNet(3, batch_norm, )
-			self.cblocks3.conv_three_blocks([128,128],[128,256],[3,3],[1,1],[1,1],[1,1])
-			self.cblocks4 = ConvBlocksUNet(4, batch_norm, )
-			self.cblocks4.conv_three_blocks([256,256],[256,512],[3,3],[1,1],[1,1],[1,1])
-			self.deconv1 = nn.ConvTranspose3d(512,512, 2, stride=2, bias=False) # .to(device=device)
-
-			# RHS of the U shape
-			self.cblocks5 = ConvBlocksUNet('3b', batch_norm, )
-			self.cblocks5.conv_three_blocks([256+512,256],[256,256],[3,3],[1,1],[1,1],[1,1])
-			self.deconv2 = nn.ConvTranspose3d(256,256, 2, stride=2, bias=False)#.to(device=device)
-			self.cblocks6 = ConvBlocksUNet('2b', batch_norm, )
-			self.cblocks6.conv_three_blocks([128+256,128],[128,128],[3,3],[1,1],[1,1],[1,1])
-			self.deconv3 = nn.ConvTranspose3d(128,128, 2, stride=2, bias=False)#.to(device=device)
-			self.cblocks7 = ConvBlocksUNet('1b', batch_norm, )
-			self.cblocks7.conv_three_blocks([64+128,64],[64,64],[3,3],[1,1],[1,1],[1,1])
-			
-			self.convf = nn.Conv3d(64, number_of_classes, 1, padding=0, stride=1, dilation=1)#.to(device=device)  
-			self.bn = nn.BatchNorm3d(number_of_classes)
-		else:
-			self.cblocks1 = ConvBlocksUNet(1, batch_norm, )
-			self.cblocks1.conv_three_blocks([input_channel,3],[3,4],[3,3],[1,1],[1,1],[1,1])
-			self.cblocks2 = ConvBlocksUNet(2, batch_norm, )
-			self.cblocks2.conv_three_blocks([4,4],[4,6],[3,3],[1,1],[1,1],[1,1])
-			self.cblocks3 = ConvBlocksUNet(3, batch_norm, )
-			self.cblocks3.conv_three_blocks([6,6],[6,8],[3,3],[1,1],[1,1],[1,1])
-			self.cblocks4 = ConvBlocksUNet(4, batch_norm, )
-			self.cblocks4.conv_three_blocks([8,8],[8,16],[3,3],[1,1],[1,1],[1,1])
-			self.deconv1 = nn.ConvTranspose3d(16,16, 2, stride=2, bias=False)#.to(device=device)
-
-			# RHS of the U shape
-			self.cblocks5 = ConvBlocksUNet('3b', batch_norm, )
-			self.cblocks5.conv_three_blocks([8+16,8],[8,8],[3,3],[1,1],[1,1],[1,1])
-			self.deconv2 = nn.ConvTranspose3d(8,8, 2, stride=2, bias=False)#.to(device=device)
-			self.cblocks6 = ConvBlocksUNet('2b', batch_norm, )
-			self.cblocks6.conv_three_blocks([6+8,6],[6,6],[3,3],[1,1],[1,1],[1,1])
-			self.deconv3 = nn.ConvTranspose3d(6,6, 2, stride=2, bias=False)#.to(device=device)
-			self.cblocks7 = ConvBlocksUNet('1b', batch_norm, )
-			self.cblocks7.conv_three_blocks([4+6,4],[4,4],[3,3],[1,1],[1,1],[1,1])
-			
-			self.convf = nn.Conv3d(4, number_of_classes, 1, padding=0, stride=1, dilation=1)#.to(device=device)  
-			self.bn = nn.BatchNorm3d(number_of_classes)
-
-		self.pool1 = nn.MaxPool3d(2, stride=2, ceil_mode=True)#.to(device=device)
-		self.pool2 = nn.MaxPool3d(2, stride=2, ceil_mode=True)#.to(device=device)
-		self.pool3 = nn.MaxPool3d(2, stride=2, ceil_mode=True)#.to(device=device)
-
-		for x in self.modules(): x = torch.nn.DataParallel(x, device_ids=range(torch.cuda.device_count()))
-		self._init_weight()
-
-	def forward(self, x):
-		x = self.cblocks1(x)
-		h1 = torch.Tensor(np.zeros(shape=(x.shape)))
-		h1.data = x.clone()
-		x = self.pool1(x)
-		x = self.cblocks2(x)
-		h2 = torch.Tensor(np.zeros(shape=(x.shape)))
-		h2.data = x.clone()
-		x = self.pool2(x)
-		x = self.cblocks3(x)
-		h3 = torch.Tensor(np.zeros(shape=(x.shape)))
-		h3.data = x.clone()
-		x = self.pool3(x)
-		x = self.cblocks4(x)
-		x = self.deconv1(x)[:,:,:-1,:,:] # the index is for "negative padding"
-
-		x = torch.cat((h3,x),dim=1)	
-		x = self.cblocks5(x)
-		x = self.deconv2(x)
-		x = torch.cat((h2,x),dim=1)	
-		x = self.cblocks6(x)
-		x = self.deconv3(x)[:,:,:-1,:,:] # the index is for "negative padding"
-		x = torch.cat((h1,x),dim=1)
-		x = self.cblocks7(x)
-
-		x = self.convf(x)
-		x = self.bn(x)
-		x = F.relu(x)
-		return x
-
-	def forward_debug(self, x):
-		print("UNet3D. forward_debug()")
-		print("  [-1] x.shape:%s"%(str(x.shape)))
-		x = self.cblocks1(x)
-		h1 = torch.Tensor(np.zeros(shape=(x.shape)))
-		h1.data = x.clone()
-		print("  [0] x.shape:%s, h1.shape:%s"%(str(x.shape), str(h1.shape)))
-		x = self.pool1(x)
-
-		x = self.cblocks2(x)
-		h2 = torch.Tensor(np.zeros(shape=(x.shape)))
-		h2.data = x.clone()
-		print("  [1] x.shape:%s, h2.shape:%s"%(str(x.shape), str(h2.shape)))
-		x = self.pool2(x)
-
-		x = self.cblocks3(x)
-		h3 = torch.Tensor(np.zeros(shape=(x.shape)))
-		h3.data = x.clone()
-		print("  [2] x.shape:%s, h3.shape:%s"%(str(x.shape), str(h3.shape)))
-		x = self.pool3(x)
-
-		x = self.cblocks4(x)
-		print("  [3] x.shape:%s"%(str(x.shape)))
-
-		x = self.deconv1(x)[:,:,:-1,:,:] # the index is for "negative padding"
-		print("  [4] x.shape:%s (3D shape must be the same as [2])"%(str(x.shape)))
-		x = torch.cat((h3,x),dim=1)
-		print("    [4b] x.shape:%s (after concat)"%(str(x.shape)))
-		
-		x = self.cblocks5(x)
-		x = self.deconv2(x)
-		print("  [5] x.shape:%s (3D shape must be the same as [1])"%(str(x.shape)))
-		x = torch.cat((h2,x),dim=1)
-		print("    [5b] x.shape:%s (after concat)"%(str(x.shape)))
-		
-		x = self.cblocks6(x)
-		x = self.deconv3(x)[:,:,:-1,:,:] # the index is for "negative padding"
-		print("  [6] x.shape:%s (3D shape must be the same as [0])"%(str(x.shape)))
-		x = torch.cat((h1,x),dim=1)
-		print("    [6b] x.shape:%s (after concat)"%(str(x.shape)))
-
-		x = self.cblocks7(x)
-		print("  [7] x.shape:%s"%(str(x.shape)))
-
-		x = self.convf(x)
-		x = self.bn(x)
-		x = F.relu(x)
-		print("  output shape:%s"%(str(x.shape)))
-		return x
-
 class FCN8like(ModulePlus):
 	"""docstring for FCN8like"""
 	def __init__(self):
@@ -357,7 +471,7 @@ class FCN8like(ModulePlus):
 				ouc = [32,32,64, 64, 128,128, 128, 256,256, 256,512,512, 512,2048,2048 ] # out channels
 
 		else:
-			''' debugging here '''
+			""" debugging here """
 			inc = [6 ,3 , 3 ,  2,  2,  2,   2,  2,  2,  3,  3,  3,  4,  4,  4] # in channels
 			ouc = [3 ,3 , 2 ,  2,  2,  2,   2,  2,  3,  3,  3,  4,  4,  4,  5] # out channels
 		# conv1
@@ -526,10 +640,11 @@ class FCN8like(ModulePlus):
 		upscore2 = h  # 1/16
 		print("  [5] upscore2.shape:%s"%(str(upscore2.shape)))
 
-		'''
+		"""
 		Fusion part 1
 		for cropping layer. WE simplify by always thaking the center of the crop.
-		'''
+		"""
+
 		factor1 = 1
 
 		h = self.score_pool4(pool4*factor1)
@@ -549,10 +664,10 @@ class FCN8like(ModulePlus):
 		print("  [7] upscore_pool4.shape:%s"%(str(upscore_pool4.shape)))
 
 
-		'''
+		"""
 		Fusion part 2
 		for cropping layer. WE simplify by always thaking the center of the crop.
-		'''
+		"""
 		factor2 = 1
 		h = self.score_pool3(pool3 * factor1)  
 		hs, usp4s = h.shape, upscore_pool4.shape
@@ -566,9 +681,9 @@ class FCN8like(ModulePlus):
 		print("  [8b] score_pool3c.shape:%s (must be the same as [7])"%(str(score_pool3c.shape)))
 		h = upscore_pool4 + score_pool3c  # 1/8
 
-		'''
-		Final fusion
-		'''
+		
+		"""Final fusion"""
+		
 		print("  [9] h.shape:%s"%(str(h.shape)))
 		h = self.upscore8(h)
 		hs, xs = h.shape, x.shape
@@ -580,7 +695,8 @@ class FCN8like(ModulePlus):
 		print("  [final] h.shape=%s"%(str(h.shape)))
 		return h
 
-
+Under construction [XABC] [END
+'''
 def count_parameters(model, print_param=False):
 	if print_param:
 		for param in model.parameters(): print(param)

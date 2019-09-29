@@ -1,5 +1,6 @@
 from utils.utils import *
-
+import utils.loss as uloss
+import utils.metric as me
 
 class EvalObj(object):
 	def __init__(self):
@@ -31,7 +32,7 @@ class EvalObj(object):
 		self.scores['latest']['dice_list'] = dice_list
 
 	def save_evaluation(self, config_data, report_name='report.txt'):
-		print('save_evaluation()')
+		print('save_evaluation():'+str(report_name))
 		report_dir = os.path.join(config_data['working_dir'], config_data['relative_checkpoint_dir'],config_data['model_label_name'])
 		report_full_path = os.path.join(report_dir,report_name)
 
@@ -43,6 +44,39 @@ class EvalObj(object):
 			print(" %5s | %s"%(str(epoch), str(avg_dice_score)))
 			txt.write(" %5s | %s\n"%(str(epoch), str(avg_dice_score)))
 		txt.close()
+
+	def save_one_case_evaluation(self, case_number, y, y_ot, config_data, dice=True):
+		'''
+		y is the predicted output. torch tensor. The shape has to be (1,d,h,w) or (1,w,h,d)
+		y_ot is the ground truth. torch tensor. The shape has to be (1,d,h,w) or (1,w,h,d)
+		'''
+		output_dir = os.path.join(config_data['working_dir'], config_data['relative_checkpoint_dir'], 
+			config_data['model_label_name'],'output')
+		save_full_path = os.path.join(output_dir, 'output_report.txt')
+
+		txt_mode = 'w'
+		if os.path.exists(save_full_path): txt_mode = 'a'
+		
+		txt = open(save_full_path, txt_mode)
+		txt.write("case_number:%s\n"%(str(case_number)))
+		if dice: 
+			dice_score, dice_score2 = self.compute_dice_one_case_and_save(y,y_ot)
+			txt.write("  dice score = %s [%s]\n"%(str(round(dice_score,5)), str(round(dice_score2,5))))
+		txt.close()
+
+	def compute_dice_one_case_and_save(self, y,y_ot):
+		'''
+		y is the predicted output. torch tensor. The shape has to be (1,d,h,w) or (1,w,h,d)
+		y_ot is the ground truth. torch tensor. The shape has to be (1,d,h,w) or (1,w,h,d)
+		'''
+		# 1.
+		dice_loss = uloss.SoftDiceLoss()
+		d = dice_loss(y, y_ot , factor=1)
+		dice_score = 1 - d.item()
+
+		# 2. 
+		dice_score2 = me.DSC(y,y_ot).item()
+		return dice_score, dice_score2
 
 
 class CrossEntropyLossTracker(object):

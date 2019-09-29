@@ -1,30 +1,74 @@
 from utils.utils import * 
+import utils.loss as uloss
+from utils.evalobj import EvalObj
 from dataio.dataISLES2017 import ISLES2017mass
 import utils.vis as vi
 
 def test(config_dir):
-	config_raw_data = json_to_dict(config_dir)
-	config_data = prepare_config(config_raw_data)
-	if config_data['debug_test_mode'] == 'test_load_ISLES2017': test_load_ISLES2017(config_dir)
-	elif config_data['debug_test_mode'] == 'test_load_ISLES2017b': test_load_ISLES2017b(config_dir)
-	elif config_data['debug_test_mode'] == 'test_load_many_ISLES2017': test_load_many_ISLES2017(config_dir)
-	elif config_data['debug_test_mode'] == 'test_data_augmentation': test_data_augmentation(config_dir)
+	cm = ConfigManager()
+	config_data = cm.json_file_to_pyobj(config_dir) # it is now a named tuple
+	config_data = cm.recursive_namedtuple_to_dict(config_data)
+
+	if config_data['debug_test_mode'] == 'test_load_ISLES2017': test_load_ISLES2017(config_data)
+	elif config_data['debug_test_mode'] == 'test_load_many_ISLES2017': test_load_many_ISLES2017(config_data)
+	elif config_data['debug_test_mode'] == 'test_data_augmentation': test_data_augmentation(config_data)
+	elif config_data['debug_test_mode'] == 'test_save_one_for_submission': test_save_one_for_submission(config_data)
 	else: raise Exception('No valid mode chosen.')
 
 '''
 Available testing modes
 '''
-def test_data_augmentation(config_dir):
+def test_save_one_for_submission(config_data):
+	print("test_save_one_for_submission()")
+	ev = EvalObj()
+
+	case_type = 'training'
+	canonical_modalities_label = ['ADC','MTT','rCBF','rCBV' ,'Tmax','TTP','OT']
+
+	ISLESDATA = ISLES2017mass()
+	ISLESDATA.verbose = 20
+	ISLESDATA.directory_path = config_data['data_directory']['dir_ISLES2017']
+	
+	# Note: at the point one_case is loaded, the shape is still (h,w,d)
+
+	# # 1. 
+	case_number = 1
+	one_case = ISLESDATA.load_one_case(case_type, str(case_number), canonical_modalities_label)
+	print("case_number:%s"%(str(case_number)))
+	print("  one_case['imgobj']['OT'].shape:%s"%(str(one_case['imgobj']['OT'].shape)))
+	for xkey in one_case: print(xkey) # just for observation
+	original_shape = one_case['imgobj']['OT'].shape
+	dummy_output_shape = (1,) + one_case['imgobj']['OT'].shape # assume at this point proper permutation has been done
+	dummy_output = one_case['imgobj']['OT'].reshape(dummy_output_shape) + np.array(np.random.randint(0,1000,size=dummy_output_shape)>995).astype(np.float)
+	dummy_output = torch.tensor(dummy_output)
+	dummy_output_numpy = dummy_output.detach().cpu().numpy()
+	y_ot_tensor = torch.tensor(one_case['imgobj']['OT'].reshape(dummy_output_shape))
+	ISLESDATA.save_one_case(dummy_output_numpy.reshape(original_shape), one_case, case_type, case_number,config_data,desc='etjoa001_'+str(case_number))
+	ev.save_one_case_evaluation(case_number, dummy_output, y_ot_tensor, config_data, dice=True)
+	
+	# # 2.
+	case_number2 = 10
+	one_case = ISLESDATA.load_one_case(case_type, str(case_number2), canonical_modalities_label)	
+	print("case_number2:%s"%(str(case_number2)))
+	print("  one_case['imgobj']['OT'].shape:%s"%(str(one_case['imgobj']['OT'].shape)))
+	original_shape = one_case['imgobj']['OT'].shape
+	dummy_output2_shape = (1,) + one_case['imgobj']['OT'].shape 
+	dummy_output2 = one_case['imgobj']['OT']
+	dummy_output2 = torch.tensor(dummy_output2.reshape(dummy_output2_shape))
+	dummy_output2_numpy = dummy_output2.detach().cpu().numpy()
+	ISLESDATA.save_one_case(dummy_output2_numpy.reshape(original_shape), one_case, case_type, case_number2,config_data, desc='etjoa001_'+str(case_number2))
+	y_ot2_tensor = torch.tensor(one_case['imgobj']['OT'].reshape(dummy_output2_shape))
+	ev.save_one_case_evaluation(case_number2, dummy_output2, y_ot2_tensor, config_data, dice=True)
+
+def test_data_augmentation(config_data):
 	print("test_data_augmentation")
-	config_raw_data = json_to_dict(config_dir)
-	config_data = prepare_config(config_raw_data)
 	
 	case_number = 1
 	case_type = 'training'
 	canonical_modalities_label = ['ADC','MTT','rCBF','rCBV' ,'Tmax','TTP','OT']
 
 	ISLESDATA = ISLES2017mass()
-	ISLESDATA.directory_path = config_data['dir_ISLES2017']
+	ISLESDATA.directory_path = config_data['data_directory']['dir_ISLES2017']
 	one_case = ISLESDATA.load_one_case(case_type, str(case_number), canonical_modalities_label)
 	'''
 	one_case['imgobj']['ADC'].shape: (192, 192, 19)
@@ -58,16 +102,13 @@ def test_data_augmentation(config_dir):
 	vis.vis2(one_case,one_case_modified)
 	plt.show()
 
-
-def test_load_ISLES2017(config_dir):
+def test_load_ISLES2017(config_data):
 	print("test_load_ISLES2017()")
-	config_raw_data = json_to_dict(config_dir)
-	config_data = prepare_config(config_raw_data)
 	case_numbers = range(1,49)
 
 	ISLESDATA = ISLES2017mass()
 	ISLESDATA.verbose = 20
-	ISLESDATA.directory_path = config_data['dir_ISLES2017']
+	ISLESDATA.directory_path = config_data['data_directory']['dir_ISLES2017']
 	case_type = 'training'
 	canonical_modalities_label = ['ADC','MTT','rCBF','rCBV' ,'Tmax','TTP','OT']
 	for case_number in case_numbers:
@@ -131,56 +172,14 @@ def test_load_ISLES2017(config_dir):
 	print("  %-4s|%-7s| %-16s | %-16s | %-16s | %-16s | %-16s | %-16s | %-16s |"%('mean', '', this_stats['ADC']['mean'], this_stats['MTT']['mean'], this_stats['rCBF']['mean'], 
 			this_stats['rCBV']['mean'], this_stats['Tmax']['mean'], this_stats['TTP']['mean'], this_stats['OT']['mean']))
 
-def test_load_ISLES2017b(config_dir):
-	'''
-	one_case['imgobj']['ADC'].shape: (192, 192, 19)
-	one_case['imgobj']['MTT'].shape: (192, 192, 19)
-	one_case['imgobj']['rCBF'].shape: (192, 192, 19)
-	one_case['imgobj']['rCBV'].shape: (192, 192, 19)
-	one_case['imgobj']['Tmax'].shape: (192, 192, 19)
-	one_case['imgobj']['TTP'].shape: (192, 192, 19)
-	one_case['imgobj']['OT'].shape: (192, 192, 19)
-	one_case['case_number']: 4
-	type(one_case['header']): <class 'nibabel.nifti1.Nifti1Header'>
-	one_case['affine'].shape: (4, 4)
-	one_case['MRS']: 4
-	one_case['ttMRS']: 90
-	one_case['TICI']: 3
-	one_case['TSS']: 116
-	one_case['TTT']: 93
-	one_case['smir_id']: 127206
-'''
-	print("test_load_ISLES2017b()")
-	config_raw_data = json_to_dict(config_dir)
-	config_data = prepare_config(config_raw_data)
-
-	ISLESDATA = ISLES2017mass()
-	ISLESDATA.verbose = 20
-	ISLESDATA.directory_path = config_data['dir_ISLES2017']
-	case_type = 'training'
-	canonical_modalities_label = ['ADC','MTT','rCBF','rCBV' ,'Tmax','TTP','OT']
-	canonical_modalities_dict = {0:'ADC',1:'MTT',2:'rCBF',3:'rCBV' ,4:'Tmax',5:'TTP',6:'OT'}
-
-	z_index = 0
-	modality_index = 0
-	case_number = 1
-	one_case = ISLESDATA.load_one_case(case_type, str(case_number), canonical_modalities_label)
-	vis = vi.SlidingVisualizer()
-	vis.vis1(one_case)
-	plt.show()
-
-	
-def test_load_many_ISLES2017(config_dir):
+def test_load_many_ISLES2017(config_data):
 	print("test_load_many_ISLES2017")
-	config_raw_data = json_to_dict(config_dir)
-	config_data = prepare_config(config_raw_data)
 	config_data['batch_size'] = 4
-	printing_config(config_data)
 	
 	case_numbers = range(1,49)
 	case_type = 'training'
 	ISLESDATA = ISLES2017mass()
-	ISLESDATA.directory_path = config_data['dir_ISLES2017']
-	ISLESDATA.load_many_cases_type0001(case_type, case_numbers, config_data,normalize=True)
+	ISLESDATA.directory_path = config_data['data_directory']['dir_ISLES2017']
+	ISLESDATA.load_many_cases_type0003(case_type, case_numbers, config_data,normalize=True)
 	trainloader = DataLoader(dataset=ISLESDATA, num_workers=1, batch_size=config_data['batch_size'], shuffle=True)
 	print("  trainloader loaded!")
