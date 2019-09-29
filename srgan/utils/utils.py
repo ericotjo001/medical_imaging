@@ -19,7 +19,23 @@ from torch.utils.data import DataLoader
 this_device = torch.device('cuda:0')
 # number_of_classes = 2 # 0,1
 
-DESCRIPTION = '''\t\t\t=== Welcome to imgpro/main.py! ===
+DESCRIPTION = '''\t\t\t=== Welcome to srgan/main.py! ===
+
+Medical images are sometimes hard to obtain. For example, in http://isles-challenge.org/ISLES2017/ there are only 43 training cases. \
+To overcome this problem, medical images can be synthetically generated for example by using \
+https://arxiv.org/abs/1406.2661GAN. However, synthetic medical images might be hard \
+to interpret, especially since it might not sufficiently reflect real organs. Thus, we develop \
+solutions that use help to augment network learning in adversarial manner without generating synthetic images.
+
+Tips: 
+(+) See entry.py shortcut_sequence to create custom training sequences.
+(+) DEBUG modes in utils/debug_switches.py are convenient for debugging. Try them out.
+
+Configuration file:
+- data_submode. See dataio/cifar2loader.py
+- training_mode. See pipeline/entry.py
+- evaluation_mode. See pipeline/entry.py
+- debug_test_mode. See tests/test.py
 
 Modes:
 (1) info
@@ -58,7 +74,6 @@ CONFIG_FILE = {
 	'model_label_name': 'SmallCNN_XXXXXX',
 	'training_mode': 'training_sr_small_cnn',
 	'evaluation_mode': 'evaluate_small_cnn',
-	# 'lrp_mode': 'lrp_UNet3D_overfit_visualizer',
 	'debug_test_mode':"test_load_cifar",
 	
 	'basic':{
