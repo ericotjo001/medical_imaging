@@ -1,5 +1,7 @@
 # Self-Reflection GAN
 
+**[Very Important]** Effectively, the algorithm is still not performing. In development. 
+
 **Motivation**. Medical images are sometimes hard to obtain. For example, in 
 <a href="http://isles-challenge.org/ISLES2017/">ISLES2017</a>, there are only 43 training cases. 
 To overcome this problem, medical images can be synthetically generated for example by using 
@@ -14,4 +16,8 @@ solutions that use help to augment network learning in adversarial manner withou
 python main.py
 '''
 
-**Initial Design**. *The code might not reflect this initial design anymore*.
+**Initial design**. The following shows the initial development plan. *The code may no longer reflect the initial design* after several tests are conducted.
+
+<div align="center">
+<img  width="400" height="250" src="https://github.com/etjoa003/medical_imaging/blob/master/srgan/images/initial_design.JPG?raw=true">
+  </div>
