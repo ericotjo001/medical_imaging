@@ -3,16 +3,24 @@ Collection of codes for medical imaging
 
 ## 1. isles2017
 
-Current status: [Update Ongoing]
+Current status: **[Update Ongoing]**
 
 This folder contains implementation of neural networks for ischemic stroke lesion segmentation. The following site is where the challenge is described http://www.isles-challenge.org/ISLES2017/.
-Simply run the following
+
+<div align="center">
+  <img width="360" height="250" src="https://github.com/etjoa003/medical_imaging/blob/master/isles2017/past_results/20190827%20UNet3D/UNet3D_XXXXXX_loss_100.jpg?raw=true">
+</div>
+
+To find out the usage instruction, run the following from the working directory:
 ```
 python main.py
 ```
-to find out the command to create the default configuration file, and then the command to run training and evaluation.
-utils/utils.py header contains all the imported packages used in this project, hence all the dependencies could be found there.
-Note that tests are conducted in Windows 10, python 3.6. 
+
+Tips:
++ utils/utils.py header contains all the imported packages used in this project, hence all the dependencies could be found there.
+
+Notes:
+All tests are conducted in Windows 10, python 3.6. 
 
 
 <div align="center">
