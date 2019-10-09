@@ -6,7 +6,36 @@ def test(config_dir):
 	config_data = get_config_data(config_dir)
 
 	if config_data['debug_test_mode'] == 'test_load_cifar': test_load_cifar(config_data)
-	
+	elif config_data['debug_test_mode'] == 'test_load_cifar_sorted': test_load_cifar_sorted(config_data)	
+
+def test_load_cifar_sorted(config_data):
+	data_dir = config_data['data_directory']['cifar10']
+	CFDATA = Cifar10Data()
+	if DEBUG_TRAINING_SIZE_PER_RAW_BATCH is not None: CFDATA.size_per_raw_batch = DEBUG_TRAINING_SIZE_PER_RAW_BATCH
+	label_choice = 0
+	split = 'train' # either 'train' or 'test'
+
+	CFDATA.load_data(config_data, as_categorical=False, split=split)
+
+	collection_of_indices = CFDATA.collect_images_of_same_labels(label_choice)
+	print(collection_of_indices)
+
+	fig = plt.figure()
+	for i in range(1, 9+1):
+		ax = fig.add_subplot('33'+str(i))
+		if i < len(collection_of_indices):
+			ind = collection_of_indices[i]
+			plt.imshow(CFDATA.x_img[ind].transpose(1,2,0))	
+		else:
+			plt.imshow(np.zeros(CFDATA.x_img[0].shape).transpose(1,2,0))
+
+	dict_class_by_index = CFDATA.create_dictionary_of_data_indices_sorted()
+	for xkey in dict_class_by_index:
+		print("xkey:%s\n%s"%(str(xkey),str(dict_class_by_index[xkey])))
+
+	plt.tight_layout()
+	plt.show()
+
 def test_load_cifar(config_data):
 	print("test/test.py. test_load_cifar()")
 	data_dir = config_data['data_directory']['cifar10']

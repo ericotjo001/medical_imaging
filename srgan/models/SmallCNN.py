@@ -19,7 +19,7 @@ convblock_setting_conv_only = {
 		'padding':1,
 		'dilation':1,
 		'groups':1,
-		'bias':True,
+		'bias':False,
 		'padding_mode':'zeros',
 		'conv_name': str(conv_only_codename)
 	},
@@ -52,7 +52,7 @@ def fast_setting(inc,ouc,k, label_name, padding=1,stride=1, use_bn=True):
 		},
 		'act':{
 			'use_act': True,
-			'activation_type':'LeakyReLU',
+			'activation_type':'Sigmoid',
 			'activation_name':'act' + str(label_name),
 			'negative_slope':0.01,
 			'inplace':False
@@ -99,7 +99,7 @@ convblock_setting_conv_final = {
 		# 'bn_name':'bn_' + str(final_name)
 	},
 	'act':{
-		'use_act': True,
+		'use_act': False,
 		'activation_type':'LeakyReLU',
 		'activation_name':'act_f' ,
 		'negative_slope':0.01,

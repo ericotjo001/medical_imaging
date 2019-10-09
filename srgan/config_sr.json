@@ -5,13 +5,13 @@
     "cifar10":"D:/Desktop@D/meim2venv/imgpro/data/cifar-10-batches-py"
   },
   "data_submode":"load_cifar10_type0001",
-  "model_label_name":"SmallCNN_XXXXXX",
-  "training_mode":"training_small_cnn",
+  "model_label_name":"SmallCNN_XXXXSR",
+  "training_mode":"training_sr_small_cnn",
   "evaluation_mode":"evaluate_small_cnn",
-  "debug_test_mode":"test_load_cifar",
+  "debug_test_mode":"test_load_cifar_sorted",
   "basic":{
-    "batch_size":4,
-    "n_epoch":2,
+    "batch_size":8,
+    "n_epoch": 2,
     "save_model_every_N_epoch":1,
     "keep_at_most_n_latest_models":4
   },
@@ -20,7 +20,7 @@
     "momentum":0.9,
     "learning_rate":0.0002,
     "weight_decay":1e-05,
-    "betas":[0.3,0.7]
+    "betas":[0.5,0.9]
   },
   "learning_for_discriminator":{
     "mechanism":"adam",

@@ -9,15 +9,21 @@ class SlidingVisualizer(object):
 		self.canonical_modalities_dict = {0:'ADC',1:'MTT',2:'rCBF',3:'rCBV' ,4:'Tmax',5:'TTP',6:'OT'}
 		self.do_show = False
 
-	def vis1(self, one_case):
+	def vis1(self, one_case, use_overlay=False):
 		z_index = 0
 		modality_index = 0
 		current_x = one_case['imgobj'][self.canonical_modalities_dict[modality_index]]
+		#################
+		if use_overlay:
+			overlay = one_case['imgobj']['OT']*3+1 # Use this to overlay the lesion on other modalities
+			current_x = current_x *overlay
+		#################
 		current_s = current_x.shape
 
 		fig,ax= plt.subplots()
+		this_cmap = "gray" # 'inferno'
 		plt.subplots_adjust(left=0.25, bottom=0.25)
-		l = plt.imshow(current_x[:,:,z_index],cmap='gray')
+		l = plt.imshow(current_x[:,:,z_index],cmap=this_cmap)
 		l.set_clim(vmin = np.min(current_x), vmax = np.max(current_x))
 		ax.set_title(self.canonical_modalities_dict[modality_index])
 
@@ -26,7 +32,7 @@ class SlidingVisualizer(object):
 		Sliders
 		'''
 		axcolor = 'lightgoldenrodyellow'
-		posx, posy, widthx_fraction, widthy_fraction = 0.25, 0.1, 0.65, 0.03 
+		posx, posy, widthx_fraction, widthy_fraction = 0.25, 0.05, 0.65, 0.03 
 		ax_z_index = plt.axes([posx, posy, widthx_fraction, widthy_fraction], facecolor=axcolor)
 		s_z_index = Slider(ax_z_index, 'z_index', 0, current_s[2] - 1, valinit=z_index, valstep=1)
 		ax_mod = plt.axes([posx, posy + 0.05, widthx_fraction, widthy_fraction], facecolor=axcolor)
@@ -36,6 +42,11 @@ class SlidingVisualizer(object):
 
 		def update(val):
 			current_x = one_case['imgobj'][self.canonical_modalities_dict[s_mod.val]]
+			############################
+			if use_overlay:
+				overlay = one_case['imgobj']['OT']*3+1 # Use this to overlay the lesion on other modalities
+				current_x = current_x *overlay
+			############################
 			current_s = current_x.shape
 			ax.set_title(self.canonical_modalities_dict[s_mod.val])
 			l.set_data(current_x[:,:,int(s_z_index.val)])

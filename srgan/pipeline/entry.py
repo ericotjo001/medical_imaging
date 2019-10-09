@@ -24,10 +24,16 @@ def shortcut_sequence(config_dir):
 	'''
 	Customize your sequence here!
 	'''
-	for i in range(4):
-		if config_data['training_mode'] == 'training_small_cnn': tr.training_small_cnn(config_data)
-		elif config_data['training_mode'] == 'training_sr_small_cnn': tr.training_sr_small_cnn(config_data)
+	for i in range(10):
+		tr.training_sr_small_cnn(config_data)
+
+		from pipeline.training_aux import adjust_config_data_for_helper_network
+		config_data2 = adjust_config_data_for_helper_network(config_data)
+		config_data_gs = adjust_config_data_for_helper_network(config_data, suffix='_gs')
+
+		if config_data['evaluation_mode'] ==  'evaluate_small_cnn':
+			ev.evaluate_small_cnn(config_data)
+			ev.evaluate_small_cnn(config_data2)
+			ev.evaluate_small_cnn_gs(config_data,config_data_gs)
 		else: raise Exception('Mode invalid')
 
-		if config_data['evaluation_mode'] ==  'evaluate_small_cnn': ev.evaluate_small_cnn(config_data)
-		else: raise Exception('Mode invalid')

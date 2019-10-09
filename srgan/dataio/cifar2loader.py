@@ -55,35 +55,65 @@ class Cifar10Data(data.Dataset):
 				filename_all.append(os.path.join(data_dir, 'data_batch_'+str(i)))
 			for j in range(5):
 				# EACH j has 10000 data. So if number_to_load is set to 10000, there will be 50k data
-			    dict1=unpickle(filename_all[j])
-			    x_img_temp=dict1[b'data'].astype(np.float)
-			    for i in range(number_to_load):       
-			        self.x_img.append((x_img_temp[i]/255.).reshape(3,32,32))
-			for i in range(5):
-				dict1=unpickle(filename_all[i])
-				if as_categorical:
-					y_label_temp=to_categorical(dict1[b'labels'], num_classes)
-					if self.y_label is None:
-						self.y_label=y_label_temp
+				dict1=unpickle(filename_all[j])
+				x_img_temp=dict1[b'data'].astype(np.float)
+				for i in range(number_to_load):       
+					self.x_img.append((x_img_temp[i]/255.).reshape(3,32,32))
+			for j in range(5):
+				dict1=unpickle(filename_all[j])
+				for i in range(number_to_load):
+					if as_categorical:
+						y_label_temp=to_categorical(dict1[b'labels'][i], num_classes)
+						if self.y_label is None:
+							self.y_label=[y_label_temp]
+						else:
+							self.y_label.append(y_label_temp)
 					else:
-						self.y_label=np.vstack((self.y_label,y_label_temp))
-				else:
-					y_label_temp=dict1[b'labels']
-					if self.y_label is None:
-						self.y_label=y_label_temp
-					else:
-						self.y_label= self.y_label+y_label_temp
+						y_label_temp=dict1[b'labels'][i]
+						if self.y_label is None:
+							self.y_label=[y_label_temp]
+						else:
+							self.y_label.append(y_label_temp)
 
 		elif split == 'test':			
 			testname = os.path.join(data_dir, 'test_batch')
 			dicttest = unpickle(testname)
 			x_img_temp=dicttest[b'data'].astype(np.float)
 			for i in range(number_to_load):
-			    self.x_img.append((x_img_temp[i]/255.).reshape((3,32,32)).astype(np.float))
-			if as_categorical:
-				self.y_label = to_categorical(dicttest[b'labels'], num_classes)
-			else:
-				self.y_label = dicttest[b'labels']
+				self.x_img.append((x_img_temp[i]/255.).reshape((3,32,32)).astype(np.float))
+				if as_categorical:
+					y_label_temp=to_categorical(dicttest[b'labels'][i], num_classes)
+					if self.y_label is None:
+						self.y_label=[y_label_temp]
+					else:
+						self.y_label.append(y_label_temp)
+				else:
+					y_label_temp=dicttest[b'labels'][i]
+					if self.y_label is None:
+						self.y_label=[y_label_temp]
+					else:
+						self.y_label.append(y_label_temp)
 		self.x_img = np.array(self.x_img)
 		self.y_label = np.array(self.y_label)
 		self.data_size = self.x_img.shape[0]
+
+		# print("  self.x_img.shape   = %s"%(str(self.x_img.shape)))
+		# print("  self.y_label.shape = %s"%(str(self.y_label.shape)))
+
+	def collect_images_of_same_labels(self, label_choice):
+		collection_of_indices = []
+		for i in range(len(self.y_label)):
+			if self.y_label[i]==label_choice: 
+				collection_of_indices.append(i)
+		return collection_of_indices
+
+	def create_dictionary_of_data_indices_sorted(self):
+		assert(not len(self.x_img)==0)
+		assert(self.y_label is not None)	
+		dict_class_by_index = {}	
+		for i in range(10):
+			dict_class_by_index[i] = self.collect_images_of_same_labels(i)
+		return dict_class_by_index
+
+
+

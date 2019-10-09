@@ -144,6 +144,23 @@ class ModulePlus(nn.Module):
 		self.training_cycle = 0
 		self.saved_epochs = []
 
+	def perform_routine(self, this_net, config_data):
+		model_dir = os.path.join(config_data['working_dir'], config_data['relative_checkpoint_dir'],config_data['model_label_name'])
+		main_model_fullpath = os.path.join(model_dir,config_data['model_label_name'] + '.model') 
+
+		if os.path.exists(main_model_fullpath): this_net = this_net.load_state(config_data); print("Load existing model...")
+		this_net.write_diary(config_data)
+		this_net.training_cycle = this_net.training_cycle + 1
+		return this_net
+		
+	def perform_routine_end(self,this_net, config_data, no_of_data_processed=None):
+		this_net.latest_epoch = this_net.latest_epoch + 1
+		this_net.write_diary_post_epoch(config_data,no_of_data_processed=no_of_data_processed )
+
+		this_net.save_models(this_net, config_data)
+		this_net.clear_up_models(this_net,config_data, keep_at_most_n_latest_models=config_data['basic']['keep_at_most_n_latest_models'])
+		return this_net
+
 	def write_diary(self, config_data):
 		diary_dir = os.path.join(config_data['working_dir'], config_data['relative_checkpoint_dir'],config_data['model_label_name'])
 		diary_full_path = os.path.join(diary_dir,'diary.txt')
@@ -224,8 +241,6 @@ class ModulePlus(nn.Module):
 					os.remove(artifact_fullpath)
 					# print("Cleaning :%s"%(artifact_fullpath))
 
-
-
 	def load_state(self, config_data):
 		model_dir = os.path.join(config_data['working_dir'], config_data['relative_checkpoint_dir'],config_data['model_label_name'])
 		main_model_fullpath = os.path.join(model_dir,config_data['model_label_name'] + '.model') 
@@ -239,6 +254,7 @@ class ModulePlus(nn.Module):
 		for m in self.modules():
 			if isinstance(m, nn.Conv3d):
 				torch.nn.init.kaiming_normal_(m.weight)
+
 
 
 def count_parameters(model, print_param=False):
