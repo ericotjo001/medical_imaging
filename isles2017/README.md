@@ -33,6 +33,14 @@ python main.py
 *Figure 2*. An ADC image (left) and a TTP image (right). LRP is used to find the importance of these images (amongst other channels) on the prediction output made by a model we train. Red/blue patch indicates positive/negative contribution. *Caveat*: at this point, the result is far from optimal.
 <br>
 
+<div align="center">
+  <img width="400" height="250" src="https://github.com/etjoa003/medical_imaging/blob/master/isles2017/_others/LRP%20example%203.JPG?raw=true">
+</div>
+
+*Figure 3*. A Tmax image with LRP overlay.
+<br>
+
+
 Tips and notes:
 + utils/utils.py header contains all the imported packages used in this project, hence all the dependencies could be found there.
 + All tests are conducted in Windows 10, python 3.6. 
