@@ -1,0 +1,21 @@
+working_dir : D:/Desktop@D [<class 'str'>]
+data_dir :
+  ISLES2017 : D:/Desktop@D [<class 'str'>]
+
+some_numbers : [[1, 2, 3, 4], [1, 2]] [<class 'list'>]
+some_numbers2 : [1.2, 3, 'ggwp'] [<class 'list'>]
+ggw3 : [[2, 3], [4, 4, 4], ['a', 'b', 'c']] [<class 'list'>]
+some_dict :
+  a : 1 [<class 'int'>]
+  b : 177 [<class 'int'>]
+  c :
+    c0000001 : 1999 [<class 'int'>]
+    c0000002 :
+      cMMMM : 7777 [<class 'int'>]
+      cAAAA : ggwp [<class 'str'>]
+
+    some OrderedDict :
+      odod : odod [<class 'str'>]
+
+
+

@@ -10,7 +10,6 @@ def relprop_size_adjustment(Z,R):
 	return tempZ, tempR
 
 class MaxPool3dLRP(nn.MaxPool3d):
-	"""docstring for MaxPool3dLRP"""
 	def __init__(self, kernel_size, stride=None, padding=0, ceil_mode=False):
 		super(MaxPool3dLRP, self).__init__(kernel_size, stride=stride, padding=padding, 
 			dilation=1, return_indices=False, ceil_mode=ceil_mode)
@@ -20,8 +19,9 @@ class MaxPool3dLRP(nn.MaxPool3d):
 		self.ceil_mode = ceil_mode
 		self.buffer =1e-9 # 0.1 # 1e-9 # 0.1
 
-	def forward(self,x):
-		self.X = x
+	def forward(self,x,save_for_relprop=True):
+		if save_for_relprop: self.X = x
+		else: self.X = None
 		return super(MaxPool3dLRP, self).forward(x)
 
 	def gradprop(self, DY):
@@ -66,8 +66,9 @@ class Conv3dLRP(nn.Conv3d):
 		return F.conv_transpose3d(DY.to(device=self.weight.device), self.weight, stride=self.stride, 
 			padding=self.padding, output_padding=0)
 	
-	def forward(self,x):
-		self.X=x
+	def forward(self,x, save_for_relprop=True):
+		if save_for_relprop: self.X = x
+		else: self.X = None
 		return super(Conv3dLRP, self).forward(x)
 
 	def relprop(self, R, verbose=0):
@@ -75,18 +76,24 @@ class Conv3dLRP(nn.Conv3d):
 		
 		pself = Conv3dLRP(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
 		pself.to(device=self.X.device)
-		pself.bias = nn.Parameter(pself.bias* 0); 
-		temp = np.maximum(0,pself.weight.detach().cpu().numpy())
-		pself.W = nn.Parameter(torch.tensor(temp))
+		# temp = np.maximum(0,pself.weight.detach().cpu().numpy())
+		# pself.W = nn.Parameter(torch.tensor(temp))
+		temp = np.maximum(0,self.weight.data.clone().cpu().detach().numpy())
+		pself.weight.data = (torch.tensor(temp)).to(device=this_device)
+		# pself.bias = nn.Parameter(pself.bias* 0)
+		pself.bias.data = pself.bias* 0
 		
 		if self.not_first_layer:	
-			
-			# MEMORY NOT ENOUGH
 			Z = super(Conv3dLRP, pself).forward(self.X) 
+			# print("     Z.shape:%s Z.view(-1).sum():%s"%(str(Z.shape),str(Z.view(-1).sum())))
 			if verbose>99: print("  Conv3dLRP. relprop():\n    R.shape=%s,Z.shape=%s"%(str(R.shape),str(Z.shape)))
 			X = self.X.clone()
 			Z, R = relprop_size_adjustment(Z,R)
 			Z = Z + self.buffer
+
+			# print("     X.shape:%s X.view(-1).sum():%s"%(str(X.shape),str(X.view(-1).sum())))
+			# print("     R.shape:%s R.view(-1).sum():%s"%(str(R.shape),str(R.view(-1).sum())))
+			
 			if verbose>249: 
 				print("    np.max(Z)=%s, np.min(Z)=%s"%(str(np.max(Z.view(-1).detach().cpu().numpy())),\
 					str(np.min(Z.view(-1).detach().cpu().numpy()))))
@@ -107,15 +114,20 @@ class Conv3dLRP(nn.Conv3d):
 				print("    np.max(X)=%s, np.min(X)=%s"%(str(np.max(X.view(-1).detach().cpu().numpy())),\
 					str(np.min(X.view(-1).detach().cpu().numpy()))))
 		else:
+			# print("   ***LRP First Layer")
 			iself = Conv3dLRP(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
 			iself.to(device=self.X.device)
-			iself.bias = nn.Parameter(iself.bias* 0);
+
+			tempi = np.maximum(0,self.weight.data.clone().cpu().detach().numpy())
+			iself.weight.data = (torch.tensor(tempi)).to(device=this_device)
+			iself.bias.data = iself.bias* 0
 
 			nself = Conv3dLRP(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
 			nself.to(device=self.X.device)
-			nself.bias = nn.Parameter(nself.bias* 0); 
-			tempn = np.minimum(0,nself.weight.detach().cpu().numpy())
-			nself.W = nn.Parameter(torch.tensor(tempn))
+
+			tempn = np.maximum(0,self.weight.data.clone().cpu().detach().numpy())
+			nself.weight.data = (torch.tensor(tempn)).to(device=this_device)
+			nself.bias.data = nself.bias* 0
 			
 			X, L, H = self.X.clone(), self.X*0 + self.relprop_max_min[0] , self.X*0 +self.relprop_max_min[1]
 
@@ -150,8 +162,9 @@ class ConvTranspose3dLRP(nn.ConvTranspose3d):
 			stride, padding, output_padding, groups, bias, dilation, padding_mode)
 		self.buffer = 1e-9 # 0.1
 
-	def forward(self,x):
-		self.X =  x
+	def forward(self,x, save_for_relprop=True):
+		if save_for_relprop: self.X =  x
+		else: self.X = None
 		return super(ConvTranspose3dLRP, self).forward(x)
 		
 	def gradprop(self, DY):
@@ -166,13 +179,12 @@ class ConvTranspose3dLRP(nn.ConvTranspose3d):
 			pself = ConvTranspose3dLRP(in_channels, out_channels, kernel_size, \
 				stride, padding, output_padding, groups, bias, dilation, padding_mode)
 			pself.to(device=self.X.device)
+	
+			temp = np.maximum(0,self.weight.data.clone().cpu().detach().numpy())
+			pself.weight.data = (torch.tensor(temp)).to(device=this_device)
+			if pself.bias is not None: pself.bias.data = pself.bias* 0 
 			
-			if pself.bias is not None: pself.bias = nn.Parameter(pself.bias* 0); 
-			temp = np.maximum(0,pself.weight.detach().cpu().numpy())
-			pself.W = nn.Parameter(torch.tensor(temp))
-			
-			# MEMORY NOT ENOUGH
-			Z = super(ConvTranspose3dLRP, pself).forward(self.X) # cpu() because cuda runs out of memory
+			Z = super(ConvTranspose3dLRP, pself).forward(self.X) 
 			Z,R = relprop_size_adjustment(Z,R)
 			Z = Z + self.buffer # 1e-9
 
@@ -207,4 +219,11 @@ class LeakyReLU_LRP(nn.LeakyReLU):
 	def relprop(self,R): 
 		return R
 		
-						
+class Sigmoid_LRP(nn.Sigmoid):
+	def __init__(self, ):
+		super(Sigmoid_LRP, self).__init__()
+
+	def relprop(self, R):
+		return R 
+
+		

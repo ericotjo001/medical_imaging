@@ -1,0 +1,11 @@
+This folder should host the trained models for the paper
+ 
+Enhancing the Extraction of Interpretable Information for Ischemic Stroke Imaging from Deep Neural Networks 
+
+The folders are arranged like
+UNet3D_AXXXS1
+UNet3D_AXXXS2
+...
+UNet3D_XXXXX4
+
+Send email to ericotjoa@gmail.com if you would like to obtain the model files.

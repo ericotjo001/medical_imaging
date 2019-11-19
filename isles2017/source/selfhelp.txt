@@ -1,0 +1,9 @@
+D:
+cd Desktop@D/meim2venv
+Scripts\activate
+cd meim3
+python main.py
+
+python main.py --mode visual --config_dir configs/vis_20191101_3DUNet.json
+
+python main.py --mode visual --config_dir configs/vis_20191106_3DUNet_fs.json

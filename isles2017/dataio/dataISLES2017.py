@@ -38,7 +38,7 @@ class ISLES2017(data.Dataset):
 		if self.verbose > 99: print("\nISLES2017.load_one_case()")
 		case_dir = os.path.join(self.directory_path, case_type + "_" + case_number)
 		case_subdirs = self.__get_case_subdirs(case_dir, modalities_label)	
-		if case_subdirs is None: print("(!) %s does not exist. Ignoring."%(case_dir)); return None
+		if case_subdirs is None: print("      (!) %s does not exist. Ignoring."%(case_dir)); return None
 		if self.verbose > 199: self.__print_load_one_case(case_type, case_number, modalities_label, case_dir, case_subdirs)
 		one_case = self.__load_one_case_type_1(case_type, case_number, case_subdirs)				
 		return one_case
@@ -173,19 +173,20 @@ class ISLES2017mass(ISLES2017):
 		
 		- Assume PWI is not included
 		'''
-
+		print("  dataISLES2017.py. load_many_cases_type0003()")
 		canonical_modalities_label = ['ADC','MTT','rCBF','rCBV' ,'Tmax','TTP','OT']
 		modalities_dict = self.get_modalities_and_set_input_channels_0001(config_data)
 
 		data_size = 0
 		resize_shape = tuple(config_data['dataloader']['resize'])
+		if DEBUG_dataISLES2017_RESIZE_SHAPE is not None: resize_shape = DEBUG_dataISLES2017_RESIZE_SHAPE
 		# print("self.no_of_input_channels:%s"%str(self.no_of_input_channels)) 
 
-		available_case_numbers = []
+		available_case_numbers, excluded_case_numbers = [], []
 		for case_number in case_numbers:
 			one_case = self.load_one_case(case_type, str(case_number), canonical_modalities_label)
-			if one_case is None: continue
-			else: available_case_numbers.append(case_number); print("case_number:",case_number)
+			if one_case is None: excluded_case_numbers.append(case_number); continue
+			else: available_case_numbers.append(case_number); # print("  case_number:",case_number)
 
 			# y1 is from the ground truth
 			x1, y1 = self.load_type0003_prepare_data_point(one_case, self.no_of_input_channels, resize_shape, 
@@ -195,7 +196,8 @@ class ISLES2017mass(ISLES2017):
 				data_size = data_size + 1
 				ytest = y1.reshape(-1)
 				unique_list =[x for x in set(ytest)]
-				assert(np.all(unique_list==[0.,1.]))
+				assert(np.all(unique_list==[0.,1.] or unique_list==[0.]))
+				if unique_list==[0.]: print("      *** after resizing, unique list is [0.]")
 				self.x.append(x1)
 				self.y.append(y1)		
 			elif config_data['augmentation']['type'] == 'rotate_then_clip_translate':
@@ -217,13 +219,30 @@ class ISLES2017mass(ISLES2017):
 		self.data_size = data_size
 		self.x = np.array(self.x)
 		self.y = np.array(self.y)
-		print("data size:%s"%(str(data_size)))
-		print("ISLES2017mass.x.shape:%s"%str(self.x.shape))
-		print("ISLES2017mass.y.shape:%s"%str(self.y.shape))
-		print("case_numbers:%s"%(str(available_case_numbers)))
+		print("    data size:%s"%(str(data_size)))
+		print("    ISLES2017mass.x.shape:%s"%str(self.x.shape))
+		print("    ISLES2017mass.y.shape:%s"%str(self.y.shape))
+		print("    case_numbers:%s"%(str(available_case_numbers)))
+		print("    ** excluded case_numbers:%s"%(str(excluded_case_numbers)))
+
+	def load_type0001_get_raw_input(self, one_case, modalities_dict, case_type='training'):
+		'''
+		'''
+		x, y = None, None
+		s = len(modalities_dict)
+		first_key = next(iter(one_case['imgobj']))
+		x = np.zeros((s,) + one_case['imgobj'][first_key].shape)
+
+		i = 0
+		for modality_key in modalities_dict:
+			# print(modalities_dict[modality_key],one_case['imgobj'][modalities_dict[modality_key]].shape)
+			x[i] = one_case['imgobj'][modalities_dict[modality_key]]
+			i = i + 1
+		if case_type == 'training': y = one_case['imgobj']['OT']
+		return x, y
 
 	def load_type0003_prepare_data_point(self, one_case, no_of_input_channels, resize_shape, 
-		modalities_dict, config_data, mode='training'):
+		modalities_dict, config_data, mode='training', resize_y = True):
 		'''
 		if mode=='training', then assume OT is included in the modalities
 		if mode=='test', then assume onecase['imgobj'][0]
@@ -253,7 +272,8 @@ class ISLES2017mass(ISLES2017):
 
 		if mode == 'test': return x1
 		y1 = torch.tensor(np.array(y,dtype=np.float))
-		y1 = interp3d(y1,resize_shape).numpy()
+		if resize_y:
+			y1 = interp3d(y1,resize_shape).numpy()
 		return x1, y1
 		
 	def load_type0003_aug001(self, i, x1, y1, aug):
@@ -295,6 +315,8 @@ class ISLES2017mass(ISLES2017):
 		for i, mod in enumerate(config_data['data_modalities']):
 			if mod != 'OT': modalities_dict[i] = mod
 		self.no_of_input_channels = len(modalities_dict)
-		print("self.no_of_input_channels:%s"%(str(self.no_of_input_channels)))
-		for xkey in modalities_dict: print("  %s"%(str(modalities_dict[xkey])))
+		print("  self.no_of_input_channels:%s"%(str(self.no_of_input_channels)))
+		print("    ",end='')
+		for xkey in modalities_dict: print("%5s "%(str(modalities_dict[xkey])),end=' | ')
+		print()
 		return modalities_dict

@@ -1,0 +1,20 @@
+{
+  "working_dir":"D:/Desktop@D/meim2venv/meim3",
+  "data_dir":{
+    "ISLES2017":"D:/Desktop@D/meim2venv/meim3/data/isles2017"
+  },
+  "some_numbers":[[1,2,3,4],[1,2]],
+  "some_numbers2":[1.2,3,"ggwp"],
+  "ggw3":[[2,3],[4,4,4],["a","b","c"]],
+  "some_dict":{
+    "a":1,
+    "b":177,
+    "c":{
+      "c0000001":1999,
+      "c0000002":{
+        "cMMMM":7777,
+        "cAAAA":"ggwp"
+      }
+    }
+  }
+}

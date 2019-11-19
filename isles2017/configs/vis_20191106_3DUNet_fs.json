@@ -1,12 +1,12 @@
 {
   "working_dir":"D:/Desktop@D/meim2venv/meim3",
-  "relative_checkpoint_dir":"checkpoints",
+  "relative_checkpoint_dir":"_others/20191106_3DUNet_fs",
   "data_directory":{
     "dir_ISLES2017":"D:/Desktop@D/meim2venv/meim3/data/isles2017"
   },
   "data_submode":"load_many_cases_type0003",
   "data_modalities":["ADC","MTT","rCBF","rCBV","Tmax","TTP","OT"],
-  "model_label_name":"UNet3D_AXXXS2",
+  "model_label_name":"UNet3D_AXXXS1",
   "training_mode":"UNet3D",
   "evaluation_mode":"UNet3D_overfit",
   "visual_mode":"lrp_UNet3D_filter_sweep_0003_visualizer",
@@ -64,10 +64,10 @@
     },
     "filter_sweeper":{
       "submode":"0003",
-      "case_numbers":[1,4,27]
+      "case_numbers":[1,2,4,7,11,15,27,28,45]
     }
   },
   "misc":{
-    "case_number":4
+    "case_number":27
   }
 }

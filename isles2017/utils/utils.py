@@ -9,6 +9,7 @@ from matplotlib.widgets import Slider, Button, RadioButtons
 from PIL import Image
 from multiprocessing import Pool
 from os import listdir
+from contextlib import redirect_stdout
 
 import torch.utils.data as data
 import torch
@@ -16,6 +17,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
+
 
 
 this_device = torch.device('cuda:0')
@@ -88,9 +90,14 @@ Modes:
   python main.py --mode lrp
   python main.py --mode lrp --config_dir config.json
 
+(7) visual.
+  python main.py --mode visual
+  python main.py --mode visual --config_dir config.json
+
 (X) shorcut_sequence
   python main.py --mode shortcut_sequence
   python main.py --mode shortcut_sequence --config_dir config.json
+  python main.py --mode shortcut_sequence --config_dir config.json --shortcut_mode XX1
 '''
 
 CONFIG_FILE = {
@@ -101,20 +108,21 @@ CONFIG_FILE = {
 	},
 	'data_submode':'load_many_cases_type0003',
 	'data_modalities':['ADC','MTT','rCBF','rCBV' ,'Tmax','TTP','OT'],
-	'model_label_name': 'UNet3D_XXXXXX',
+	'model_label_name': 'UNet3D_AYXXX2',
 	'training_mode': 'UNet3D',
-	'evaluation_mode': 'UNet3D_eval_combo',
-	'lrp_mode': 'lrp_UNet3D_overfit_visualizer',
+	'evaluation_mode': 'UNet3D_overfit',
+	'visual_mode':'lrp_UNet3D_overfit_visualizer',
+	'lrp_mode': 'lrp_UNet3D_overfit',
 	'debug_test_mode':"test_load_many_ISLES2017",
 	
 	'basic':{
 		'batch_size' : 1,
-		'n_epoch' : 10,
-		'save_model_every_N_epoch': 2,
-		'keep_at_most_n_latest_models':3
+		'n_epoch' : 2,
+		'save_model_every_N_epoch': 1,
+		'keep_at_most_n_latest_models':4
 	},
 	'dataloader':{
-		'resize' : [192,192,19]
+		'resize' : [48,48,19] # [192,192,19]
 	},
 	'learning':{
 		'mechanism':"adam",
@@ -124,23 +132,44 @@ CONFIG_FILE = {
 		'betas':[0.5,0.9],
 		},
 	'normalization': {
-		"ADC_source_min_max": [None, None], # "[0, 5000]",
-		"MTT_source_min_max": [None, None],
-		"rCBF_source_min_max": [None, None],
-		"rCBV_source_min_max": [None, None],
-		"Tmax_source_min_max": [None, None],
-		"TTP_source_min_max": [None, None],
+		'ADC_source_min_max' : [None, None], # "[0, 5000]",
+		'MTT_source_min_max' : [None, None],
+		'rCBF_source_min_max' : [None, None],
+		'rCBV_source_min_max' : [None, None],
+		'Tmax_source_min_max' : [None, None],
+		'TTP_source_min_max' : [None, None],
 		
-		"ADC_target_min_max": [0,1],
-		"MTT_target_min_max": [0,1],
-		"rCBF_target_min_max": [0,1],
-		"rCBV_target_min_max": [0,1],
-		"Tmax_target_min_max": [0,1],
-		"TTP_target_min_max": [0,1],
+		'ADC_target_min_max' : [0,1],
+		'MTT_target_min_max' : [0,1],
+		'rCBF_target_min_max' : [0,1],
+		'rCBV_target_min_max' : [0,1],
+		'Tmax_target_min_max' : [0,1],
+		'TTP_target_min_max' : [0,1],
 	},
 	'augmentation': {
 		'type': 'no_augmentation',
 		'number_of_data_augmented_per_case': 10,
+	},
+	'LRP':{
+		'relprop_config':{
+			'mode': 'UNet3D_standard',
+			'normalization': 'raw',
+			'UNet3D': {
+				'concat_factors': [0.5,0.5,0.5]
+			},
+			'fraction_pass_filter' :{
+				"positive":[0.0,0.6],
+				"negative":[-0.6,-0.0]		
+			},
+			'fraction_clamp_filter' :{
+				"positive":[0.0,0.6],
+				"negative":[-0.6,-0.0]		
+			},
+		},
+		'filter_sweeper' :{
+			'submode' : '0001',
+			'case_numbers': [4,27]
+		}
 	},
 	'misc': {
 		'case_number':1
@@ -192,12 +221,61 @@ class ConfigManager(object):
 		os.remove(temp_dir)
 
 	def recursive_namedtuple_to_dict(self, config_data):
-		config_data = config_data._asdict()
+		if not type(config_data) == type({}):
+			config_data = config_data._asdict()
 		for xkey in config_data:
-			if 'ConfigX' in str(type(config_data[xkey])) :
+			if 'ConfigX' in str(type(config_data[xkey])):
 				config_data[xkey] = config_data[xkey]._asdict()
+				for ykey in config_data[xkey]:
+					if 'ConfigX' in str(type(config_data[xkey][ykey])):
+						config_data[xkey][ykey] = self.recursive_namedtuple_to_dict(config_data[xkey][ykey])
 		return config_data
 
+class DictionaryTxtManager(object):
+	def __init__(self, diary_dir, diary_name, dictionary_data=None, header=None):
+		super(DictionaryTxtManager, self).__init__()
+		self.diary_full_path = os.path.join(diary_dir,diary_name)
+		if not os.path.exists(diary_dir): os.mkdir(diary_dir)
+		
+		self.diary_mode = 'a' 
+		if not os.path.exists(self.diary_full_path): self.diary_mode = 'w'
+
+		if dictionary_data is not None:
+			self.write_dictionary_to_txt(dictionary_data, header=header)			
+
+	def write_dictionary_to_txt(self, dictionary_data,header=None):
+		txt = open(self.diary_full_path,self.diary_mode)
+		if header is not None: txt.write(header)
+		self.recursive_txt(txt,dictionary_data,space='')
+		txt.close()
+
+	def recursive_txt(self,txt,dictionary_data,space=''):
+		for x in dictionary_data:
+			if isinstance(dictionary_data[x],dict) or type(dictionary_data[x])==type(collections.OrderedDict({})):
+				txt.write("%s%s :\n"%(space,x))
+				# self.write_dictionary_to_txt(dictionary_data[x],space=space+'  ')
+				# for y in dictionary_data[x]:
+				# 	txt.write("%s%s :"%(space,y))
+				self.recursive_txt(txt,dictionary_data[x], space=space+'  ')
+					# txt.write("\n")
+			else:
+				txt.write("%s%s : %s [%s]"%(space,x, dictionary_data[x],type(dictionary_data[x])))
+			txt.write("\n")
+
+class Logger():
+	"""
+	Usage, run your program after running the following
+	sys.stdout = Logger(full_path_log_file="hello.txt")
+	"""
+	def __init__(self, full_path_log_file="logfile.log"):
+		self.terminal = sys.stdout
+		self.log = open(full_path_log_file, "a")
+
+	def write(self, message):
+		self.terminal.write(message)
+		self.log.write(message)  
+
+	def flush(self): pass   
 
 def read_csv(filename, header_skip=1,get_the_first_N_rows = 0):
     # filename : string, name of csv file without extension
@@ -342,3 +420,44 @@ def centre_crop_tensor(x, intended_shape):
 	assert(np.all(np.array(x1.shape)==intended_shape))
 	return x1
 
+
+
+class SaveableObject(object):
+	def __init__(self, ):
+		super(SaveableObject, self).__init__()
+		self.a = None
+
+	def set_a(self, a):
+		self.a = a
+
+	def save_object(self,fullpath):
+		output = open(fullpath, 'wb')
+		pickle.dump(self, output)
+		output.close()
+
+	def load_object(self, fullpath):
+		pkl_file = open(fullpath, 'rb')
+		this_loaded_object = pickle.load(pkl_file)
+		pkl_file.close() 
+		return this_loaded_object
+
+def intersect_fraction_a_in_b(a,b):
+	'''
+	a, b binary np.array of the same size with dtype float
+	Motivation: 
+	  if b is proper subset of a, then output is 1
+	  if a is proper subset of b, then sum(b intersect a)/sum(b) 
+	b is the limiting factor
+
+	a = np.random.randint(0,2,(4,4)).astype(np.float)
+	b = np.random.randint(0,2,(4,4)).astype(np.float)
+
+	m = intersect_fraction_a_in_b(a,b)
+	print(a, sum(a.reshape(-1)))
+	print(b, sum(b.reshape(-1)))
+	print()
+	print(a*b)
+	print(m)
+	'''
+	y = a*b
+	return sum(y.reshape(-1))/sum(b.reshape(-1))

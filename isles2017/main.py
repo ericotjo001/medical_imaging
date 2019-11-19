@@ -5,6 +5,7 @@ from pipeline.entry import train
 from pipeline.entry import evaluation
 from pipeline.entry import lrp
 from pipeline.entry import shortcut_sequence
+from pipeline.entry import visual
 import tests.test as te
 
 '''
@@ -27,7 +28,9 @@ def main():
 	elif arg_dict['mode'] == 'train': train(config_dir)
 	elif arg_dict['mode'] == 'evaluation': evaluation(config_dir)
 	elif arg_dict['mode'] == 'lrp': lrp(config_dir)
-	elif arg_dict['mode'] == 'shortcut_sequence': shortcut_sequence(config_dir)
+	elif arg_dict['mode'] == 'visual' : visual(config_dir)
+	elif arg_dict['mode'] == 'shortcut_sequence': 
+		shortcut_sequence(config_dir, mode=arg_dict['shortcut_mode'] )
 	else: raise Exception('Invalid mode.')
 
 if __name__=='__main__':
@@ -36,10 +39,12 @@ if __name__=='__main__':
 	parser.add_argument('--mode', help='mode. See utils/utils.py')
 	parser.add_argument('--config_dir', help='.json configuration file directory')
 	parser.add_argument('--case_number',help='case number, for general purpose')
+	parser.add_argument('--shortcut_mode',help='shortcut_mode, see entry.py shortcut_sequence()')
 	args = parser.parse_args()
 	arg_dict = {
 		'mode': args.mode,
-		'config_dir': args.config_dir
+		'config_dir': args.config_dir,
+		'shortcut_mode': args.shortcut_mode
 	}
 	main()
 
