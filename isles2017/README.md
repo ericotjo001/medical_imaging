@@ -2,7 +2,9 @@
 **Description**. This folder contains implementation of neural networks for ischemic stroke lesion segmentation from ISLES 2017. 
 <br>
 
-Current status: **[Update Ongoing]**
+**Current status:** On pre-print.<br>
+**Title:** Enhancing the Extraction of Interpretable Information for Ischemic Stroke Imaging from Deep Neural Networks.<br>
+**Pre-print link:** https://arxiv.org/abs/1911.08136 .<br>
 
 **Usage**. To find out the usage instruction, run the following from the working directory:
 ```
@@ -19,6 +21,9 @@ python main.py
 **LRP (Layer-wise Relevance Propagation)**. LRP is a visualization tool developed to observe the importance of segments or parts of the input to the prediction made by a neural network. Visit http://heatmapping.org for more details.
 <br>
 
+Some relevant figures:
+<br>
+
 <div align="center">
   <img width="640" height="250" src="https://github.com/etjoa003/medical_imaging/blob/master/isles2017/_others/for_show_scans.jpg?raw=true">
 </div>
@@ -26,18 +31,11 @@ python main.py
 *Figure 1*. (left) ADC image of a patient from one of the training case. (right) Ground truth segmentation output. This shows the location of the lesion.
 
 <div align="center">
-  <img width="400" height="250" src="https://github.com/etjoa003/medical_imaging/blob/master/isles2017/_others/LRP%20example%202.JPG?raw=true">
-    <img width="400" height="250" src="https://github.com/etjoa003/medical_imaging/blob/master/isles2017/_others/LRP%20example.JPG?raw=true">
+  <img width="500" height="500" src="https://github.com/etjoa003/medical_imaging/blob/master/isles2017/_others/LatestImages/lrpfilter.JPG?raw=true">
 </div>
 
-*Figure 2*. An ADC image (left) and a TTP image (right). LRP is used to find the importance of these images (amongst other channels) on the prediction output made by a model we train. Red/blue patch indicates positive/negative contribution. *Caveat*: at this point, the result is far from optimal.
-<br>
+*Figure 2*. (A) Raw LRP output. (B,C) LRP output with filters applied. (A2-C2) LRP output overlaid on a slice of RBF modality of an MRI scan. (D) Ground-truth lesion segmentation (E) Predicted lesion (F) A slice of RBF modality of an MRI scan.
 
-<div align="center">
-  <img width="400" height="250" src="https://github.com/etjoa003/medical_imaging/blob/master/isles2017/_others/LRP%20example%203.JPG?raw=true">
-</div>
-
-*Figure 3*. A Tmax image with LRP overlay.
 <br>
 
 
