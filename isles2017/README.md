@@ -18,7 +18,7 @@ python main.py
 **Data**. ISLES 2017 multi-modal MRI scans, 43 training cases, 32 test cases. Visit http://www.isles-challenge.org/ISLES2017/ for details.
 <br>
 
-**LRP (Layer-wise Relevance Propagation)**. LRP is a visualization tool developed to observe the importance of segments or parts of the input to the prediction made by a neural network. Visit http://heatmapping.org for more details. Notice that there are several variants of LRP applicable to different layers. We also adapt our algorithm from https://github.com/Hey1Li/Salient-Relevance-Propagation.
+**LRP (Layer-wise Relevance Propagation)**. LRP is a visualization tool developed to observe the importance of segments or parts of the input to the prediction made by a neural network. Visit http://heatmapping.org for more details. Notice that there are several variants of LRP applicable to different layers. We also adapted our algorithm from sources such as https://github.com/Hey1Li/Salient-Relevance-Propagation and the older version of the main LRP site http://web.archive.org/web/20190529054742/http://heatmapping.org/tutorial/.
 <br>
 
 Some relevant figures:
