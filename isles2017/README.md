@@ -18,7 +18,9 @@ python main.py
 **Data**. ISLES 2017 multi-modal MRI scans, 43 training cases, 32 test cases. Visit http://www.isles-challenge.org/ISLES2017/ for details.
 <br>
 
-**LRP (Layer-wise Relevance Propagation)**. LRP is a visualization tool developed to observe the importance of segments or parts of the input to the prediction made by a neural network. Visit http://heatmapping.org for more details. Notice that there are several variants of LRP applicable to different layers. We also adapted our algorithm from sources such as https://github.com/Hey1Li/Salient-Relevance-Propagation and the older version of the main LRP site http://web.archive.org/web/20190529054742/http://heatmapping.org/tutorial/.
+**LRP (Layer-wise Relevance Propagation)**. LRP is a visualization tool developed to observe the importance of segments or parts of the input to the prediction made by a neural network. Visit http://heatmapping.org for more details. Notice that there are several variants of LRP applicable to different layers. We also adapted our algorithm from sources such as 
+1. the older version of the main LRP site http://web.archive.org/web/20190529054742/http://heatmapping.org/tutorial/
+2. and https://github.com/Hey1Li/Salient-Relevance-Propagation.
 <br>
 
 Some relevant figures:
@@ -38,7 +40,16 @@ Some relevant figures:
 
 <br>
 
-
 Tips and notes:
 + utils/utils.py header contains all the imported packages used in this project, hence all the dependencies could be found there.
 + All tests are conducted in Windows 10, python 3.6. 
+
+Warning (!)
+1.
+The older version of the main LRP site (see link above) has been replaced along with the older version of LRP formula. 
+2.
+Refer to models/networks_LRP.py. Line 128 has been updated to 
+  tempn = np.minimum(0,self.weight.data.clone().cpu().detach().numpy())
+from 
+  tempn = np.maximum(0,self.weight.data.clone().cpu().detach().numpy())
+The former is the suggested application of LRP on the input layer from the older version of the main LRP site (see link above). The published results here show the usage of the wrong version of the suggestion. The effect of the mistake is the amplification of positive weight at the final LRP layer and the coupling of signals associated to negative weights to the positive weights. This happens only at the input layer. We can see this as a variation of LRP application. We are currently investigating if similar "spiking errors" are observed in both the latest version of LRP (from the main website) and the "correct" version of older LRP algorithm. As of now, the main idea of "spiking errors" appear to still hold (to be updated), indicating that the error has little effects on the overall behaviour.
