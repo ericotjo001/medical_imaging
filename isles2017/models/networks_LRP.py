@@ -125,7 +125,7 @@ class Conv3dLRP(nn.Conv3d):
 			nself = Conv3dLRP(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
 			nself.to(device=self.X.device)
 
-			tempn = np.maximum(0,self.weight.data.clone().cpu().detach().numpy())
+			tempn = np.minimum(0,self.weight.data.clone().cpu().detach().numpy())
 			nself.weight.data = (torch.tensor(tempn)).to(device=this_device)
 			nself.bias.data = nself.bias* 0
 			
