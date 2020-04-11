@@ -9,9 +9,9 @@ def evaluation_UNet3D_overfit_submission(config_data):
 	print("evaluation_UNet3D_overfit_submission()")
 	evaluation_for_submission_overfit_0001(config_data)
 
-def evaluation_UNet3D_test_submission(config_data):
+def evaluation_UNet3D_test_submission(config_data,case_numbers_manual=None):
 	print('evaluation_UNet3D_test_submission()')
-	evaluation_for_test_submission_0001(config_data)
+	evaluation_for_test_submission_0001(config_data,case_numbers_manual=case_numbers_manual)
 
 def get_modalities_0001(config_data):
 	modalities_dict = {}
@@ -51,8 +51,11 @@ def generic_evaluation_overfit_0001(config_data):
 		artifact_model_fullpath = os.path.join(model_dir,config_data['model_label_name'] + '.' + str(save_epoch) + '.model')
 		if not os.path.exists(artifact_model_fullpath): continue
 
-		if model_type == 'UNet3D': artifact_net = net.UNet3D(no_of_input_channel=no_of_input_channels, with_LRP=True) 
-		else: raise Exception("Invalid mode")
+		if model_type == 'UNet3D': 
+			artifact_net = net.UNet3D(no_of_input_channel=no_of_input_channels, with_LRP=True) 
+		elif model_type == "UNet3D_diff":
+			artifact_net = net.UNet3D(no_of_input_channel=no_of_input_channels, with_LRP=True) 			
+		else: raise Exception("Invalid model_type selected. Check training_mode.")
 		
 		artifact_net.load_state_dict(torch.load(artifact_model_fullpath))
 		
@@ -83,6 +86,7 @@ def evaluation_for_submission_overfit_0001(config_data):
 	this_net = nut.get_UNet3D_version(config_data, no_of_input_channels, training_mode=model_type, training=False)
 	this_net.eval()
 
+
 	case_type = 'training'
 	for_evaluation = generic_data_loading(config_data, case_type=case_type)
 	dice_check1_list, dice_check2_list = [], []
@@ -105,7 +109,7 @@ def evaluation_for_submission_overfit_0001(config_data):
 	print("dice_check lists:%s [%s]"%(str(np.mean(dice_check1_list)),str(np.mean(dice_check2_list))))
 
 	
-def evaluation_for_test_submission_0001(config_data,verbose=0):
+def evaluation_for_test_submission_0001(config_data, case_numbers_manual=None, verbose=0):
 	print('    evaluation_for_test_submission_0001()')
 
 	ISLESDATA = ISLES2017mass()
@@ -120,13 +124,17 @@ def evaluation_for_test_submission_0001(config_data,verbose=0):
 	this_net.eval()
 
 	case_type = 'test'
-	for_evaluation = generic_data_loading(config_data,case_type=case_type)
+	for_evaluation = generic_data_loading(config_data,case_numbers_manual=case_numbers_manual,
+		case_type=case_type)
 
 	for case_number in for_evaluation:
 		if verbose>=50: print('    case number: %s'%(str(case_number)))
 		x = for_evaluation[case_number][0] # shape example e.g. [1,6,19,192,12] 
-		s_with_channel = x[0].shape # e.g. [6,19,192,12]
-		s = s_with_channel[1:] # e.g. [19,192,192]
+		# s_with_channel = x[0].shape # e.g. [6,19,192,12]
+		# s = s_with_channel[1:] # e.g. [19,192,192]
+		# print('s:%s'%(str(s)))
+		s = get_shape_of_one_test_case(config_data, case_number, verbose=verbose)
+		
 		if DEBUG_SHAPES_DURING_EVAL: print('      **DEBUG_SHAPES_DURING_EVAL:\n\t\tx.shape:%s'%(str(s)))
 		one_case = ISLESDATA.load_one_case(case_type, str(case_number), canonical_modalities_label)
 		y_pred = torch.argmax(this_net(x).contiguous(),dim=1).squeeze().permute(2,1,0).to(torch.float).cpu()
@@ -137,4 +145,15 @@ def evaluation_for_test_submission_0001(config_data,verbose=0):
 			if verbose>=50:  print("      no reshaping.") 
 
 		ISLESDATA.save_one_case(y_pred, one_case, case_type, case_number,config_data, desc='etjoa001_UNet3D_test_'+str(case_number))
-	# 	
+
+
+def get_shape_of_one_test_case(config_data, case_number, verbose=0):
+	if verbose>=50: print('    get_shape_of_one_test_case():%s'%(str(case_number)))
+	case_type = 'test'
+	canonical_modalities_label = ['ADC','MTT','rCBF','rCBV' ,'Tmax','TTP','OT']
+	
+	ISLESDATA = ISLES2017mass()
+	ISLESDATA.directory_path = config_data['data_directory']['dir_ISLES2017']
+	resize_shape = tuple(config_data['dataloader']['resize'])
+	one_case = ISLESDATA.load_one_case(case_type, str(case_number), canonical_modalities_label)
+	return one_case['imgobj']['ADC'].shape

@@ -50,3 +50,4 @@ def DEBUG_training_UNet3Db_filter_optim_loss(DEBUG_TRAINING_LOOP_LOSS, this_net,
 		print("    sum of loss: %s"%(str(loss)))
 
 	return DEBUG_SIGNAL
+

@@ -152,7 +152,7 @@ def lrp_UNet3D_overfit_options(config_data, output_lrp_folder_name='output_lrp',
 
 			if DEBUG_lrp_relprop_one: R = this_net.relprop_debug(R,relprop_config); break
 			R = this_net.relprop(R, relprop_config).squeeze()
-			Rc = convert_LRP_output_to_correct_size(R, x, sx, s, no_of_modalities, verbose=verbose)
+			Rc = convert_LRP_output_to_correct_size(R, x, y, sx, s, no_of_modalities, verbose=verbose)
 
 			save_one_lrp_output(case_number,y,Rc, config_data, output_lrp_folder_name=output_lrp_folder_name)
 			cases_processed.append(case_number)

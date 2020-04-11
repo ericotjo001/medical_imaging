@@ -1,6 +1,7 @@
 DEBUG_VERSION = 1
+# Updated parts has local DEBUG signals i.e. the DEBUG CUES are in the script itself (or near the script)
 
-
+# LEGACY DEBUG CONTROLS
 if DEBUG_VERSION:
 	# pipeline/training,py
 	DEBUG_TRAINING_CASE_NUMBERS = range(1,8) # default is None
@@ -11,7 +12,7 @@ if DEBUG_VERSION:
 
 	# pipeline/test.py
 	DEBUG_EVAL_TRAINING_CASE_NUMBERS = [1,4,7] # [1,2,4,7,11,12,13,15,28,27,45] # default is None # for training
-	DEBUG_EVAL_TEST_CASE_NUMBERS = range(1,8) # None # range(1,10) # default is None # for test
+	DEBUG_EVAL_TEST_CASE_NUMBERS = [15] # None # range(1,10) # default is None # for test
 	DEBUG_EVAL_LOOP = 0
 
 	# pipeline/lrp.py

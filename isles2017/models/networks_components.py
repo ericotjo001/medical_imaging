@@ -70,58 +70,6 @@ class ConvBlocksUNet(nn.Module):
 				print("    sqr sum=%s np.max(R)=%s, np.min(R)=%s"%(str(ss),str(np.max(R.detach().cpu().numpy())),str(np.min(R.detach().cpu().numpy()))))
 		return R
 
-class LensModule(nn.Module):
-	def __init__(self, n_channel):
-		nC = n_channel
-		super(LensModule, self).__init__()
-		self.cvl = lr.Conv3dLRP(nC, nC, [3,17,17], padding=[1,8,8], stride=1, dilation=1)
-		self.cvl.not_first_layer = False
-		self.cvl.relprop_max_min = [0.,1.]
-		self.cvl2 = lr.Conv3dLRP(nC, nC, [3,17,17], padding=[1,8,8], stride=1, dilation=1)
-		self.cvl3 = lr.Conv3dLRP(nC, nC, [3,17,17], padding=[1,8,8], stride=1, dilation=1)
-		self.sg = lr.Sigmoid_LRP()
-		self.act = lr.LeakyReLU_LRP()
-		
-	def forward(self,x, save_for_relprop=True):
-		# self.X = x
-		x = self.act(self.cvl(x, save_for_relprop=save_for_relprop))
-		x = self.act(self.cvl2(x, save_for_relprop=save_for_relprop))
-		x = self.sg(self.cvl3(x, save_for_relprop=save_for_relprop))
-		return x
-
-	def relprop(self,R):
-		R = self.sg.relprop(R)
-		R = self.cvl3.relprop(R)
-		R = self.sg.relprop(R)
-		R = self.cvl2.relprop(R)
-		R = self.sg.relprop(R)
-		R = self.cvl.relprop(R)
-		return R
-
-	def forward_debug(self,x, save_for_relprop=True):
-		print("  LensModule()")
-		print("    [0] x.shape:%s"%(str(x.shape)))
-		x = self.act(self.cvl(x, save_for_relprop=save_for_relprop))
-		print("    [1] x.shape:%s"%(str(x.shape)))
-		x = self.act(self.cvl2(x, save_for_relprop=save_for_relprop))
-		print("    [2] x.shape:%s"%(str(x.shape)))
-		x = self.sg(self.cvl3(x, save_for_relprop=save_for_relprop))
-		print("    [X] x.shape:%s"%(str(x.shape)))
-		return x
-
-	def relprop_debug(self, R):
-		print("  LensModule relprop()")
-		R = self.sg.relprop(R)
-		print("    [0] R.shape:%s"%(str(R.shape)))
-		R = self.cvl3.relprop(R)
-		R = self.sg.relprop(R)
-		print("    [1] R.shape:%s"%(str(R.shape)))
-		R = self.cvl2.relprop(R)
-		R = self.sg.relprop(R)
-		print("    [2] R.shape:%s"%(str(R.shape)))
-		R = self.cvl.relprop(R)
-		return R
-
 
 class ModulePlus(nn.Module):
 	"""docstring for ModulePlus"""

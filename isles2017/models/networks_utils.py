@@ -10,15 +10,26 @@ def get_UNet3D_version(config_data, nc, training_mode=None, training=True):
 		this_net = net.UNet3D(no_of_input_channel=nc, with_LRP=True); network_name = 'UNet3D'
 	elif training_mode == "UNet3Db":
 		this_net = net.UNet3Db(no_of_input_channel=nc, with_LRP=True); network_name = 'UNet3Db'
+	elif training_mode == "UNet3D_diff":
+		this_net = net.UNet3D(no_of_input_channel=nc, with_LRP=True); network_name = 'UNet3D'
 	else:
 		raise Exception('Invalid mode!')
 
+	print('      ',main_model_fullpath)
+
 	if training:
-		if os.path.exists(main_model_fullpath): this_net = this_net.load_state(config_data); print("  Load existing model... [%s]"%(network_name))
-		else: print("  Creating new model... [%s]"%(network_name))
+		if os.path.exists(main_model_fullpath): 
+			this_net = this_net.load_state(config_data); 
+			print("  Load existing model... [%s]"%(network_name))
+		else: 
+			print("  Creating new model... [%s]"%(network_name))
 		this_net.training_cycle = this_net.training_cycle + 1
 	else:
-		if os.path.exists(main_model_fullpath): this_net = this_net.load_state(config_data); print("  Load existing model... [%s]"%(network_name))
-		else: raise Exception('  Model to load not found!') 
+		
+		if os.path.exists(main_model_fullpath): 
+			this_net = this_net.load_state(config_data); 
+			print("  Load existing model... [%s]"%(network_name))
+		else: 
+			raise Exception('  Model to load not found!') 
 
 	return this_net

@@ -1,9 +1,6 @@
 from utils.utils import *
 from utils.custom_augment import Image3DAugment
 
-# DEBUG_dataISLES2017_load_type0003_aug = 0
-# DEBUG_dataISLES2017_AUG_NUMBER = 0 # default 0
-
 '''
 IMPT:
 During data loading, data will not be transposed.

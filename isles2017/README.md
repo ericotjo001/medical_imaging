@@ -46,7 +46,7 @@ Tips and notes:
 
 Warning (!)<br>
 1. The older version of the main LRP site (see link above) has been replaced along with the older version of LRP formula. <br>
-2. Refer to models/networks_LRP.py. Line 128 has been updated to 
+2. Refer to models/networks_LRP.py. Around line 135 in relprop() else section, the code has been updated to 
 <br>
 
 ```

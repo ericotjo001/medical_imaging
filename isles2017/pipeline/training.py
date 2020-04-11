@@ -44,6 +44,3 @@ def training_UNet3D(config_data):
 		this_net = this_net.post_process_sequence(this_net, config_data, no_of_data_processed=str(i+1))
 	cetracker.save_loss_plot(label_tag=str(this_net.latest_epoch))
 	cetracker.save_state(config_data, filename='crossentropyloss_tracker_' + str(this_net.latest_epoch) + '.evalobj')
-
-
-

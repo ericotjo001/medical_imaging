@@ -61,14 +61,17 @@ def training_UNet3D_compute_loss(criterion, y, y0, config_data, this_net, x):
 
 	if config_data['training_mode'] == 'UNet3D': loss = criterion(y, y0)
 	elif config_data['training_mode'] == 'UNet3Db': loss = criterion(y, y0)
-	elif config_data['training_mode'] == 'UNet3D_LRP_optim':
-		if DEBUG_TRAINING_LOOP_LOSS: 
-			LRP_optim_loss_DEBUG(this_net, x, y0, criterion)
-			return None, DEBUG_SIGNAL_LOSS
-		loss = criterion(y, y0) + LRP_optim_loss(this_net, x, y0, criterion)
-	elif config_data['training_mode'] == 'UNet3Db_LRP_optim':
-		regularization = 0.01
-		loss = criterion(y, y0) + regularization * LRP_optim_loss(this_net, x, y0, criterion)
+	elif config_data['training_mode'] == 'UNet3D_diff': loss = criterion(y, y0)
+
+	# DEPRECATE
+	# elif config_data['training_mode'] == 'UNet3D_LRP_optim':
+	# 	if DEBUG_TRAINING_LOOP_LOSS: 
+	# 		LRP_optim_loss_DEBUG(this_net, x, y0, criterion)
+	# 		return None, DEBUG_SIGNAL_LOSS
+	# 	loss = criterion(y, y0) + LRP_optim_loss(this_net, x, y0, criterion)
+	# elif config_data['training_mode'] == 'UNet3Db_LRP_optim':
+	# 	regularization = 0.01
+	# 	loss = criterion(y, y0) + regularization * LRP_optim_loss(this_net, x, y0, criterion)
 	return loss, DEBUG_SIGNAL_LOSS
 
 

@@ -5,19 +5,44 @@ import utils.vis as vi
 from dataio.dataISLES2017 import ISLES2017mass
 
 import pipeline.visual_header as vh
+import pipeline.visual_diff as vd
+import pipeline.visual_diff2 as vd2
 
 '''
 Customize your visualization modes here
 '''
+INFO_VISUAL = """Available visual mode (from config_data['visual_mode'] setting):
+plot_loss_0001
+evaluation_test_submit_one_case_plot
+lrp_UNet3D_overfit_visualizer
+lrp_UNet3D_filter_sweep_visualizer
+lrp_UNet3D_filter_sweep_0002_visualizer
+lrp_UNet3D_filter_sweep_0003_visualizer
+diffgen_0001
+diffgen_0002
+"""
 
 def visual_select_submode(config_data):
-
-	if config_data['visual_mode']=='plot_loss_0001': plot_loss_0001(config_data)
-	elif config_data['visual_mode'] == 'lrp_UNet3D_overfit_visualizer': lrp_UNet3D_overfit_visualizer(config_data)
-	elif config_data['visual_mode'] == 'lrp_UNet3D_filter_sweep_visualizer': lrp_UNet3D_filter_sweep_visualizer(config_data) 
-	elif config_data['visual_mode'] == 'lrp_UNet3D_filter_sweep_0002_visualizer': lrp_UNet3D_filter_sweep_0002_visualizer(config_data) 
-	elif config_data['visual_mode'] == 'lrp_UNet3D_filter_sweep_0003_visualizer': lrp_UNet3D_filter_sweep_0003_visualizer(config_data) 
-	else: raise Exception('Invalid mode!')
+	if config_data['visual_mode']=='plot_loss_0001':
+		plot_loss_0001(config_data)
+	elif config_data['visual_mode'] == 'evaluation_test_submit_one_case_plot':
+		from pipeline.visual_evaluation_view import visualize_evaluation_for_test_submission
+		visualize_evaluation_for_test_submission(config_data)
+	elif config_data['visual_mode'] == 'lrp_UNet3D_overfit_visualizer': 
+		lrp_UNet3D_overfit_visualizer(config_data)
+	elif config_data['visual_mode'] == 'lrp_UNet3D_filter_sweep_visualizer':
+		lrp_UNet3D_filter_sweep_visualizer(config_data) 
+	elif config_data['visual_mode'] == 'lrp_UNet3D_filter_sweep_0002_visualizer':
+		lrp_UNet3D_filter_sweep_0002_visualizer(config_data) 
+	elif config_data['visual_mode'] == 'lrp_UNet3D_filter_sweep_0003_visualizer':
+		lrp_UNet3D_filter_sweep_0003_visualizer(config_data) 
+	elif config_data['visual_mode'] == 'diffgen_0001':
+		# see the output of adding dgen noise to brain slices
+		vd.visual_diff_gen_0001(config_data)
+	elif config_data['visual_mode'] == 'diffgen_0002':
+		vd2.visual_diff_gen_0002(config_data)
+	else: 
+		print(INFO_VISUAL)
 	return
 
 def lrp_UNet3D_filter_sweep_0003_visualizer(config_data, verbose=0):
@@ -80,7 +105,6 @@ def lrp_UNet3D_filter_sweep_0002_visualizer(config_data, verbose=0):
 	vh.lrp_UNet3D_filter_sweep_0002_visualizer_aux(config_data,model_label_names_collection, 'fraction_clamp_filter', color_list, verbose=0)
 	plt.show()
 
-
 def lrp_UNet3D_filter_sweep_visualizer(config_data):
 	print('lrp_UNet3D_filter_sweep_visualizer()')
 	filter_sub_mode = config_data['LRP']['filter_sweeper']['submode']
@@ -139,8 +163,6 @@ def lrp_UNet3D_overfit_visualizer(config_data):
 	args = (one_case,y,Rc,data_modalities)
 	p = Pool(2)
 	p.map(vis.vis_lrp_training, [args+(1,),args+(2,)] )
-
-	
 
 def plot_loss_0001(config_data):
 	print('visual.py. plot_loss_0001()')
