@@ -3,7 +3,6 @@ Collection of codes for medical imaging
 1. <a href="https://github.com/etjoa003/medical_imaging/tree/master/isles2017">isles2017</a>. Deep learning for ischemic stroke lesion segmentation.
 2. <a href="https://github.com/etjoa003/medical_imaging/tree/master/multiv">Multiv</a>. Image slice sampler.
 3. <a href="https://github.com/etjoa003/medical_imaging/tree/master/Attention-Gated-Networks_auxiliary">Attention-Gated-Networks_auxiliary</a>. Auxiliary codes for Attention Gated Networks.
-4. <a href="https://github.com/etjoa003/medical_imaging/tree/master/srgan">srGAN</a>. An ongoing research based on GAN.
 
 <div align="center">
    <img width="300" height="200" src="https://github.com/etjoa003/medical_imaging/blob/master/images/lrpinput.jpg?raw=true">
@@ -36,4 +35,3 @@ Related links:
 1. Layerwise Relevance Propagation. http://heatmapping.org
 2. https://github.com/ozan-oktay/Attention-Gated-Networks/blob/master/utils/util.py
 3. http://www.isles-challenge.org/ISLES2017/
-4. Generative Adversarial Network. https://arxiv.org/abs/1406.2661
