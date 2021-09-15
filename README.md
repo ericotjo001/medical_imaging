@@ -1,9 +1,9 @@
 # medical_imaging
 
-2021 May Update: this repository has been restructured. Previous projects will be archived and no longer be updated.
+2021 May Update: this repository has been restructured. Previous prCancel changesojects will be archived and no longer be updated.
 
-Current ollection of codes for medical imaging:
-1. Not available.
+Current collection of codes for medical imaging:
+1. N.A. (No project for this repo is in progress)
 
 Archived (no longer updated):
 1. <a href="https://github.com/etjoa003/medical_imaging/tree/master/isles2017">isles2017</a>. Deep learning for ischemic stroke lesion segmentation.
