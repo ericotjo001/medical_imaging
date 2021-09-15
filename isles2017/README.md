@@ -2,7 +2,7 @@
 **Description**. This folder contains implementation of neural networks for ischemic stroke lesion segmentation from ISLES 2017. 
 <br>
 
-**Current status:** On pre-print.<br>
+**Current status:** On pre-print. Warning! We use older formulas of LRP specified below. The formulas and websites have since been updated. Hence, the results in this pre-print are no longer valid.<br> 
 **Title:** Enhancing the Extraction of Interpretable Information for Ischemic Stroke Imaging from Deep Neural Networks.<br>
 **Pre-print link:** https://arxiv.org/abs/1911.08136 .<br>
 
