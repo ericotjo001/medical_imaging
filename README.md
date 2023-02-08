@@ -1,6 +1,6 @@
 # medical_imaging
 
-2023 Jan Update: Be sure to read any warnings in the sub-repo, especially the isles2017 folder. 
+2023 Jan Update: Be sure to read any warnings in the sub-repo, especially the isles2017 folder. <br>
 2021 May Update: this repository has been restructured. Previous projects will be archived and no longer be updated.
 
 Archived (no longer updated):
