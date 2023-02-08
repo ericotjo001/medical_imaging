@@ -4,7 +4,7 @@
 2021 May Update: this repository has been restructured. Previous projects will be archived and no longer be updated.
 
 Archived (no longer updated):
-1. <a href="https://github.com/etjoa003/medical_imaging/tree/master/isles2017">isles2017</a>. Deep learning for ischemic stroke lesion segmentation.
+1. <a href="https://github.com/etjoa003/medical_imaging/tree/master/isles2017">isles2017</a>. Deep learning for ischemic stroke lesion segmentation. The related paper is <a href="https://arxiv.org/abs/1911.08136">Enhancing the Extraction of Interpretable Information for Ischemic Stroke Imaging from Deep Neural Networks</a>.
 2. <a href="https://github.com/etjoa003/medical_imaging/tree/master/multiv">Multiv</a>. Image slice sampler.
 3. <a href="https://github.com/etjoa003/medical_imaging/tree/master/Attention-Gated-Networks_auxiliary">Attention-Gated-Networks_auxiliary</a>. Auxiliary codes for Attention Gated Networks.
 
