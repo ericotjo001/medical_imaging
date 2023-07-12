@@ -1,5 +1,6 @@
 # medical_imaging
 
+$\color{red}{\text{2023 July Update: don't use this repo. It's old and pretty bad.}}$<br>
 2023 Jan Update: Be sure to read any warnings in the sub-repo, especially the isles2017 folder. <br>
 2021 May Update: this repository has been restructured. Previous projects will be archived and no longer be updated.
 
